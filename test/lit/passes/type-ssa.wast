@@ -30,6 +30,10 @@
   ;; CHECK:      (global $h (ref $struct) (struct.new $struct_5
   ;; CHECK-NEXT:  (i32.const 42)
   ;; CHECK-NEXT: ))
+
+  ;; CHECK:      (memory $0 16 17)
+  (memory $0 16 17)
+
   (global $h (ref $struct) (struct.new $struct
     (i32.const 42)
   ))
@@ -67,6 +71,32 @@
       (struct.new $struct
         (i32.const 100)
       )
+    )
+  )
+
+  ;; CHECK:      (func $tuple-unreachable (type $1)
+  ;; CHECK-NEXT:  (tuple.extract 2 0
+  ;; CHECK-NEXT:   (unreachable)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+  (func $tuple-unreachable
+    ;; We should not error on this.
+    (tuple.extract 2 0
+      (unreachable)
+    )
+  )
+
+  ;; CHECK:      (func $atomic-unreachable (type $1)
+  ;; CHECK-NEXT:  (i32.atomic.rmw.sub offset=4
+  ;; CHECK-NEXT:   (unreachable)
+  ;; CHECK-NEXT:   (unreachable)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+  (func $atomic-unreachable
+    ;; We should not error on this.
+    (i32.atomic.rmw.sub offset=4
+      (unreachable)
+      (unreachable)
     )
   )
 )
@@ -133,10 +163,10 @@
 ;; Some of these are uninteresting and should not get a new type.
 (module
 
-  ;; CHECK:      (type $0 (func (param anyref arrayref)))
-
   ;; CHECK:      (type $struct (sub (struct (field anyref))))
   (type $struct (sub (struct (field (ref null any)))))
+
+  ;; CHECK:      (type $1 (func (param anyref arrayref)))
 
   ;; CHECK:      (rec
   ;; CHECK-NEXT:  (type $struct_1 (sub $struct (struct (field anyref))))
@@ -145,7 +175,7 @@
 
   ;; CHECK:       (type $struct_3 (sub $struct (struct (field anyref))))
 
-  ;; CHECK:      (func $foo (type $0) (param $any anyref) (param $array arrayref)
+  ;; CHECK:      (func $foo (type $1) (param $any anyref) (param $array arrayref)
   ;; CHECK-NEXT:  (drop
   ;; CHECK-NEXT:   (struct.new_default $struct_1)
   ;; CHECK-NEXT:  )
@@ -165,7 +195,7 @@
   ;; CHECK-NEXT:   )
   ;; CHECK-NEXT:  )
   ;; CHECK-NEXT:  (drop
-  ;; CHECK-NEXT:   (block ;; (replaces something unreachable we can't emit)
+  ;; CHECK-NEXT:   (block ;; (replaces unreachable StructNew we can't emit)
   ;; CHECK-NEXT:    (drop
   ;; CHECK-NEXT:     (unreachable)
   ;; CHECK-NEXT:    )
@@ -366,10 +396,10 @@
 ;; turn into a simple Literal). (We do optimize $empty and generate $empty$1,
 ;; but that is not important here.)
 (module
-  ;; CHECK:      (type $empty (sub (struct )))
+  ;; CHECK:      (type $empty (sub (struct)))
   (type $empty (sub (struct)))
 
-  ;; CHECK:      (type $empty_1 (sub $empty (struct )))
+  ;; CHECK:      (type $empty_1 (sub $empty (struct)))
 
   ;; CHECK:      (type $2 (func (param anyref)))
 
@@ -382,15 +412,15 @@
   ;; CHECK:      (func $0 (type $2) (param $param anyref)
   ;; CHECK-NEXT:  (drop
   ;; CHECK-NEXT:   (struct.new $struct
-  ;; CHECK-NEXT:    (extern.externalize
+  ;; CHECK-NEXT:    (extern.convert_any
   ;; CHECK-NEXT:     (global.get $g)
   ;; CHECK-NEXT:    )
-  ;; CHECK-NEXT:    (extern.internalize
-  ;; CHECK-NEXT:     (extern.externalize
+  ;; CHECK-NEXT:    (any.convert_extern
+  ;; CHECK-NEXT:     (extern.convert_any
   ;; CHECK-NEXT:      (global.get $g)
   ;; CHECK-NEXT:     )
   ;; CHECK-NEXT:    )
-  ;; CHECK-NEXT:    (extern.externalize
+  ;; CHECK-NEXT:    (extern.convert_any
   ;; CHECK-NEXT:     (local.get $param)
   ;; CHECK-NEXT:    )
   ;; CHECK-NEXT:   )
@@ -400,17 +430,17 @@
     (drop
       (struct.new $struct
         ;; An externalized global.
-        (extern.externalize
+        (extern.convert_any
           (global.get $g)
         )
         ;; An externalized and then internalized global.
-        (extern.internalize
-          (extern.externalize
+        (any.convert_extern
+          (extern.convert_any
             (global.get $g)
           )
         )
         ;; An externalized parameter.
-        (extern.externalize
+        (extern.convert_any
           (local.get $param)
         )
       )
@@ -430,7 +460,7 @@
   ;; CHECK:      (rec
   ;; CHECK-NEXT:  (type $array_1 (sub $array (array (mut f32))))
 
-  ;; CHECK:       (type $4 (struct (field (mut i32)) (field (mut i32)) (field (mut f64)) (field (mut f64)) (field (mut i32)) (field (mut f64)) (field (mut f64)) (field (mut i32)) (field (mut i32)) (field (mut i32)) (field (mut i32))))
+  ;; CHECK:       (type $4 (struct))
 
   ;; CHECK:      (func $1 (type $2) (param $ref (ref $subarray))
   ;; CHECK-NEXT:  (drop
@@ -452,31 +482,34 @@
 )
 
 (module
-  ;; CHECK:      (type $A (sub (struct )))
+  ;; CHECK:      (type $A (sub (struct)))
   (type $A (sub (struct)))
 
-  ;; CHECK:      (type $A_1 (sub $A (struct )))
+  ;; CHECK:      (type $A_1 (sub $A (struct)))
 
   ;; CHECK:      (type $2 (func (result (ref $A))))
 
   ;; CHECK:      (func $0 (type $2) (result (ref $A))
-  ;; CHECK-NEXT:  (block $label (result (ref $A_1))
+  ;; CHECK-NEXT:  (block $label (result (ref (exact $A_1)))
   ;; CHECK-NEXT:   (drop
-  ;; CHECK-NEXT:    (br_on_cast $label (ref $A_1) (ref $A_1)
-  ;; CHECK-NEXT:     (struct.new_default $A_1)
+  ;; CHECK-NEXT:    (br_on_cast $label (ref (exact $A_1)) (ref (exact $A_1))
+  ;; CHECK-NEXT:     (block (result (ref (exact $A_1)))
+  ;; CHECK-NEXT:      (struct.new_default $A_1)
+  ;; CHECK-NEXT:     )
   ;; CHECK-NEXT:    )
   ;; CHECK-NEXT:   )
   ;; CHECK-NEXT:   (unreachable)
   ;; CHECK-NEXT:  )
   ;; CHECK-NEXT: )
   (func $0 (result (ref $A))
-    ;; After creating a subtype of $A as the input to the br_on_cast, the cast
-    ;; must be refinalized so that it validates (otherwise, it would try to cast
-    ;; to a supertype).
+    ;; After creating a subtype of $A as the input to the br_on_cast, the block
+    ;; and cast should be refinalized.
     (block $label (result (ref $A))
       (drop
         (br_on_cast $label (ref $A) (ref $A)
-          (struct.new_default $A)
+          (block (result (ref $A))
+            (struct.new_default $A)
+          )
         )
       )
       (unreachable)

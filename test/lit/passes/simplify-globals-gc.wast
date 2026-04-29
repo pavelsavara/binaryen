@@ -14,7 +14,7 @@
 
  ;; CHECK:      (func $func (type $A)
  ;; CHECK-NEXT:  (drop
- ;; CHECK-NEXT:   (ref.cast (ref $A)
+ ;; CHECK-NEXT:   (ref.cast (ref (exact $A))
  ;; CHECK-NEXT:    (ref.func $func)
  ;; CHECK-NEXT:   )
  ;; CHECK-NEXT:  )
@@ -29,5 +29,60 @@
    )
   )
  )
+)
+
+(module
+ ;; CHECK:      (type $struct (struct))
+ (type $struct (struct ))
+
+ ;; CHECK:      (type $1 (func (result anyref)))
+
+ ;; CHECK:      (global $a (ref $struct) (struct.new_default $struct))
+ (global $a (ref $struct) (struct.new_default $struct))
+ ;; CHECK:      (global $b (ref $struct) (global.get $a))
+ (global $b (ref $struct) (global.get $a))
+ ;; CHECK:      (global $c (ref null $struct) (global.get $a))
+ (global $c (ref null $struct) (global.get $a))
+
+ ;; CHECK:      (func $get-c (type $1) (result anyref)
+ ;; CHECK-NEXT:  (global.get $c)
+ ;; CHECK-NEXT: )
+ (func $get-c (result anyref)
+  ;; $c has a less-refined type than the other two. We do not switch this to
+  ;; get from either $a or $b because of that, but we could if we also
+  ;; refinalized TODO
+  (global.get $c)
+ )
+)
+
+;; One global reads another, and should contain the same value. We should not
+;; erroneously optimize the global.get to a struct.new, as struct.new generates
+;; a new value each time, and the export allows that difference to be noticed.
+;; TODO: We could flip the export to read $B instead, basically considering it
+;;       a use that we can modify, like global.gets that we already do.
+(module
+ ;; CHECK:      (type $struct (struct))
+ (type $struct (struct))
+
+ ;; CHECK:      (global $A (ref $struct) (struct.new_default $struct))
+ (global $A (ref $struct) (struct.new_default $struct))
+
+ ;; CHECK:      (global $B (ref $struct) (global.get $A))
+ (global $B (ref $struct) (global.get $A))
+
+ ;; CHECK:      (export "A" (global $A))
+ (export "A" (global $A))
+)
+
+;; Without that export, we only use $A once, and can fold it into that use.
+(module
+ ;; CHECK:      (type $struct (struct))
+ (type $struct (struct))
+
+ ;; CHECK:      (global $A (ref $struct) (struct.new_default $struct))
+ (global $A (ref $struct) (struct.new_default $struct))
+
+ ;; CHECK:      (global $B (ref $struct) (struct.new_default $struct))
+ (global $B (ref $struct) (global.get $A))
 )
 

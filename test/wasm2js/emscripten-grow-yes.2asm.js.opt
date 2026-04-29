@@ -57,15 +57,15 @@ function asmFunc(imports) {
  bufferView = HEAPU8;
  initActiveSegments(imports);
  function __wasm_memory_size() {
-  return buffer.byteLength / 65536 | 0;
+  return buffer.byteLength >> 16;
  }
  
  function __wasm_memory_grow(pagesToAdd) {
   pagesToAdd = pagesToAdd | 0;
   var oldPages = __wasm_memory_size() | 0;
   var newPages = oldPages + pagesToAdd | 0;
-  if ((oldPages < newPages) && (newPages < 65536)) {
-   var newBuffer = new ArrayBuffer(Math_imul(newPages, 65536));
+  if ((oldPages < newPages) && (newPages < 65536) && (newPages <= 1024)) {
+   var newBuffer = new ArrayBuffer(newPages << 16);
    var newHEAP8 = new Int8Array(newBuffer);
    newHEAP8.set(HEAP8);
    HEAP8 = new Int8Array(newBuffer);
@@ -84,6 +84,7 @@ function asmFunc(imports) {
  }
  
  return {
+  "get_size": $0, 
   "memory": Object.create(Object.prototype, {
    "grow": {
     "value": __wasm_memory_grow
@@ -94,8 +95,7 @@ function asmFunc(imports) {
     }
     
    }
-  }), 
-  "get_size": $0
+  })
  };
 }
 

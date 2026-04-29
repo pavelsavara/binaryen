@@ -1,66 +1,65 @@
-[fuzz-exec] calling structs
+[fuzz-exec] export structs
 [LoggingExternalInterface logging 0]
 [LoggingExternalInterface logging 42]
 [LoggingExternalInterface logging 100]
 [LoggingExternalInterface logging 100]
-[fuzz-exec] calling arrays
+[fuzz-exec] export arrays
 [LoggingExternalInterface logging 50]
 [LoggingExternalInterface logging 42]
 [LoggingExternalInterface logging 128]
 [LoggingExternalInterface logging -128]
 [LoggingExternalInterface logging 42]
-[fuzz-exec] calling br_on_cast
+[fuzz-exec] export br_on_cast
 [LoggingExternalInterface logging 3]
-[fuzz-exec] calling br_on_failed_cast-1
+[fuzz-exec] export br_on_failed_cast-1
 [LoggingExternalInterface logging 1]
-[fuzz-exec] calling br_on_failed_cast-2
+[fuzz-exec] export br_on_failed_cast-2
 [LoggingExternalInterface logging 1]
 [LoggingExternalInterface logging 999]
-[fuzz-exec] calling cast-null-anyref-to-gc
+[fuzz-exec] export cast-null-anyref-to-gc
 [LoggingExternalInterface logging 0]
-[fuzz-exec] calling br-on_non_null
-[fuzz-exec] calling br-on_non_null-2
+[fuzz-exec] export br-on_non_null
+[fuzz-exec] export br-on_non_null-2
 [LoggingExternalInterface logging 1]
 [trap unreachable]
-[fuzz-exec] calling ref-as-func-of-func
-[fuzz-exec] calling cast-on-func
+[fuzz-exec] export ref-as-func-of-func
+[fuzz-exec] export cast-on-func
 [LoggingExternalInterface logging 0]
 [LoggingExternalInterface logging 1337]
 [LoggingExternalInterface logging 1]
 [trap cast error]
-[fuzz-exec] calling array-alloc-failure
+[fuzz-exec] export array-alloc-failure
 [host limit allocation failure]
-[fuzz-exec] calling init-array-packed
+[fuzz-exec] export init-array-packed
 [fuzz-exec] note result: init-array-packed => 213
-[fuzz-exec] calling array-copy
+[fuzz-exec] export array-copy
 [LoggingExternalInterface logging 10]
 [LoggingExternalInterface logging 10]
 [LoggingExternalInterface logging 99]
 [LoggingExternalInterface logging 0]
 [LoggingExternalInterface logging 10]
-[fuzz-exec] calling array.new_fixed
+[fuzz-exec] export array.new_fixed
 [LoggingExternalInterface logging 2]
 [LoggingExternalInterface logging 42]
 [LoggingExternalInterface logging 50]
-[fuzz-exec] calling array.new_fixed-packed
+[fuzz-exec] export array.new_fixed-packed
 [LoggingExternalInterface logging 8]
-[fuzz-exec] calling static-casts
+[fuzz-exec] export static-casts
 [LoggingExternalInterface logging 1]
 [LoggingExternalInterface logging 0]
 [LoggingExternalInterface logging 0]
 [LoggingExternalInterface logging 1]
 [LoggingExternalInterface logging 0]
 [LoggingExternalInterface logging 1]
-[fuzz-exec] calling static-br_on_cast
+[fuzz-exec] export static-br_on_cast
 [LoggingExternalInterface logging 3]
-[fuzz-exec] calling static-br_on_cast_fail
+[fuzz-exec] export static-br_on_cast_fail
 [LoggingExternalInterface logging -2]
 (module
  (type $bytes (array (mut i8)))
  (type $void_func (func))
  (type $struct (sub (struct (field (mut i32)))))
  (type $3 (func (param i32)))
- (type $extendedstruct (sub $struct (struct (field (mut i32)) (field f64))))
  (type $int_func (func (result i32)))
  (import "fuzzing-support" "log-i32" (func $log (type $3) (param i32)))
  (export "structs" (func $structs))
@@ -81,7 +80,7 @@
  (export "static-casts" (func $static-casts))
  (export "static-br_on_cast" (func $br_on_cast))
  (export "static-br_on_cast_fail" (func $static-br_on_cast_fail))
- (func $structs (type $void_func) (; has Stack IR ;)
+ (func $structs (type $void_func)
   (local $0 i32)
   (call $log
    (i32.const 0)
@@ -98,8 +97,8 @@
    (i32.const 100)
   )
  )
- (func $arrays (type $void_func) (; has Stack IR ;)
-  (local $0 (ref $bytes))
+ (func $arrays (type $void_func)
+  (local $0 (ref (exact $bytes)))
   (local.set $0
    (array.new $bytes
     (i32.const 42)
@@ -139,34 +138,24 @@
    )
   )
  )
- (func $br_on_cast (type $void_func) (; has Stack IR ;)
+ (func $br_on_cast (type $void_func)
   (call $log
    (i32.const 3)
   )
  )
- (func $br_on_failed_cast-1 (type $void_func) (; has Stack IR ;)
-  (local $0 (ref $struct))
+ (func $br_on_failed_cast-1 (type $void_func)
+  (local $0 (ref (exact $struct)))
   (local.set $0
    (struct.new_default $struct)
   )
-  (drop
-   (block $any (result (ref null $struct))
-    (call $log
-     (i32.const 1)
-    )
-    (drop
-     (br_on_cast_fail $any (ref $struct) (ref $extendedstruct)
-      (local.get $0)
-     )
-    )
-    (call $log
-     (i32.const 999)
-    )
-    (ref.null none)
+  (block $any
+   (call $log
+    (i32.const 1)
    )
+   (br $any)
   )
  )
- (func $br_on_failed_cast-2 (type $void_func) (; has Stack IR ;)
+ (func $br_on_failed_cast-2 (type $void_func)
   (call $log
    (i32.const 1)
   )
@@ -174,25 +163,21 @@
    (i32.const 999)
   )
  )
- (func $cast-null-anyref-to-gc (type $void_func) (; has Stack IR ;)
+ (func $cast-null-anyref-to-gc (type $void_func)
   (call $log
    (i32.const 0)
   )
  )
- (func $br-on_non_null (type $void_func) (; has Stack IR ;)
+ (func $br-on_non_null (type $void_func)
   (nop)
  )
- (func $br-on_non_null-2 (type $void_func) (; has Stack IR ;)
-  (drop
-   (block
-    (call $log
-     (i32.const 1)
-    )
-    (unreachable)
-   )
+ (func $br-on_non_null-2 (type $void_func)
+  (call $log
+   (i32.const 1)
   )
+  (unreachable)
  )
- (func $cast-on-func (type $void_func) (; has Stack IR ;)
+ (func $cast-on-func (type $void_func)
   (call $log
    (i32.const 0)
   )
@@ -204,7 +189,7 @@
   )
   (unreachable)
  )
- (func $init-array-packed (type $int_func) (; has Stack IR ;) (result i32)
+ (func $init-array-packed (type $int_func) (result i32)
   (array.get_u $bytes
    (array.new $bytes
     (i32.const -43)
@@ -213,9 +198,9 @@
    (i32.const 10)
   )
  )
- (func $array-copy (type $void_func) (; has Stack IR ;)
-  (local $0 (ref $bytes))
-  (local $1 (ref $bytes))
+ (func $array-copy (type $void_func)
+  (local $0 (ref (exact $bytes)))
+  (local $1 (ref (exact $bytes)))
   (array.set $bytes
    (local.tee $1
     (array.new_default $bytes
@@ -268,41 +253,31 @@
    )
   )
  )
- (func $array.new_fixed (type $void_func) (; has Stack IR ;)
-  (local $0 (ref $bytes))
+ (func $array.new_fixed (type $void_func)
+  (local $0 i32)
+  (local $1 i32)
   (local.set $0
-   (array.new_fixed $bytes 2
-    (i32.const 42)
-    (i32.const 50)
-   )
+   (i32.const 42)
+  )
+  (local.set $1
+   (i32.const 50)
   )
   (call $log
    (i32.const 2)
   )
   (call $log
-   (array.get_u $bytes
-    (local.get $0)
-    (i32.const 0)
-   )
+   (i32.const 42)
   )
   (call $log
-   (array.get_u $bytes
-    (local.get $0)
-    (i32.const 1)
-   )
+   (i32.const 50)
   )
  )
- (func $array.new_fixed-packed (type $void_func) (; has Stack IR ;)
+ (func $array.new_fixed-packed (type $void_func)
   (call $log
-   (array.get_u $bytes
-    (array.new_fixed $bytes 1
-     (i32.const -11512)
-    )
-    (i32.const 0)
-   )
+   (i32.const 8)
   )
  )
- (func $static-casts (type $void_func) (; has Stack IR ;)
+ (func $static-casts (type $void_func)
   (call $log
    (i32.const 1)
   )
@@ -322,78 +297,78 @@
    (i32.const 1)
   )
  )
- (func $static-br_on_cast_fail (type $void_func) (; has Stack IR ;)
+ (func $static-br_on_cast_fail (type $void_func)
   (call $log
    (i32.const -2)
   )
  )
 )
-[fuzz-exec] calling structs
+[fuzz-exec] export structs
 [LoggingExternalInterface logging 0]
 [LoggingExternalInterface logging 42]
 [LoggingExternalInterface logging 100]
 [LoggingExternalInterface logging 100]
-[fuzz-exec] calling arrays
+[fuzz-exec] export arrays
 [LoggingExternalInterface logging 50]
 [LoggingExternalInterface logging 42]
 [LoggingExternalInterface logging 128]
 [LoggingExternalInterface logging -128]
 [LoggingExternalInterface logging 42]
-[fuzz-exec] calling br_on_cast
+[fuzz-exec] export br_on_cast
 [LoggingExternalInterface logging 3]
-[fuzz-exec] calling br_on_failed_cast-1
+[fuzz-exec] export br_on_failed_cast-1
 [LoggingExternalInterface logging 1]
-[fuzz-exec] calling br_on_failed_cast-2
+[fuzz-exec] export br_on_failed_cast-2
 [LoggingExternalInterface logging 1]
 [LoggingExternalInterface logging 999]
-[fuzz-exec] calling cast-null-anyref-to-gc
+[fuzz-exec] export cast-null-anyref-to-gc
 [LoggingExternalInterface logging 0]
-[fuzz-exec] calling br-on_non_null
-[fuzz-exec] calling br-on_non_null-2
+[fuzz-exec] export br-on_non_null
+[fuzz-exec] export br-on_non_null-2
 [LoggingExternalInterface logging 1]
 [trap unreachable]
-[fuzz-exec] calling ref-as-func-of-func
-[fuzz-exec] calling cast-on-func
+[fuzz-exec] export ref-as-func-of-func
+[fuzz-exec] export cast-on-func
 [LoggingExternalInterface logging 0]
 [LoggingExternalInterface logging 1337]
 [LoggingExternalInterface logging 1]
 [trap unreachable]
-[fuzz-exec] calling array-alloc-failure
-[fuzz-exec] calling init-array-packed
+[fuzz-exec] export array-alloc-failure
+[fuzz-exec] export init-array-packed
 [fuzz-exec] note result: init-array-packed => 213
-[fuzz-exec] calling array-copy
+[fuzz-exec] export array-copy
 [LoggingExternalInterface logging 10]
 [LoggingExternalInterface logging 10]
 [LoggingExternalInterface logging 99]
 [LoggingExternalInterface logging 0]
 [LoggingExternalInterface logging 10]
-[fuzz-exec] calling array.new_fixed
+[fuzz-exec] export array.new_fixed
 [LoggingExternalInterface logging 2]
 [LoggingExternalInterface logging 42]
 [LoggingExternalInterface logging 50]
-[fuzz-exec] calling array.new_fixed-packed
+[fuzz-exec] export array.new_fixed-packed
 [LoggingExternalInterface logging 8]
-[fuzz-exec] calling static-casts
+[fuzz-exec] export static-casts
 [LoggingExternalInterface logging 1]
 [LoggingExternalInterface logging 0]
 [LoggingExternalInterface logging 0]
 [LoggingExternalInterface logging 1]
 [LoggingExternalInterface logging 0]
 [LoggingExternalInterface logging 1]
-[fuzz-exec] calling static-br_on_cast
+[fuzz-exec] export static-br_on_cast
 [LoggingExternalInterface logging 3]
-[fuzz-exec] calling static-br_on_cast_fail
+[fuzz-exec] export static-br_on_cast_fail
 [LoggingExternalInterface logging -2]
 ignoring comparison of ExecutionResults!
-[fuzz-exec] calling foo
+[fuzz-exec] export foo
 [host limit allocation failure]
 (module
  (type $0 (func (result i32)))
  (export "foo" (func $foo))
- (func $foo (type $0) (; has Stack IR ;) (result i32)
+ (func $foo (type $0) (result i32)
   (i32.const 0)
  )
 )
-[fuzz-exec] calling foo
+[fuzz-exec] export foo
 [fuzz-exec] note result: foo => 0
 ignoring comparison of ExecutionResults!

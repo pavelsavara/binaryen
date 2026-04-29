@@ -174,19 +174,20 @@ wabt_bin = os.path.join(wabt_dir, 'bin')
 
 def wabt_determine_platform():
     if sys.platform.startswith('linux'):
-        return 'ubuntu'
+        return 'linux'
     if sys.platform == 'darwin':
         return 'macos'
     if sys.platform == 'win32':
         return 'windows'
-    print('Cannot determine platform, assuming \'ubuntu\'')
-    return 'ubuntu'
+    print('Cannot determine platform, assuming \'linux\'')
+    return 'linux'
 
 
 def wabt_determine_release(platform):
+    platform_regex = re.compile(r"^wabt-.*-%s.*.tar.gz$" % platform)
     data = fetch_json('https://api.github.com/repos/WebAssembly/wabt/releases/latest')
     for asset in data['assets']:
-        if asset['name'].endswith('-' + platform + '.tar.gz'):
+        if platform_regex.match(asset['name']):
             return asset['browser_download_url']
     print('Cannot determine release')
     return ''
@@ -214,11 +215,11 @@ def wabt_main():
         print('* Something went wrong :(')
 
 
-TOOLS = collections.OrderedDict([
-    ('mozjs', mozjs_main),
-    ('v8', v8_main),
-    ('wabt', wabt_main),
-])
+TOOLS = {
+    'mozjs': mozjs_main,
+    'v8': v8_main,
+    'wabt': wabt_main,
+}
 
 if __name__ == '__main__':
     if len(sys.argv) < 2 or sys.argv[1] == '--help':

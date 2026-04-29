@@ -614,6 +614,106 @@
   )
 )
 
+;; Tests branch with condition is reconstructed without error.
+(module
+  ;; CHECK:      (type $0 (func))
+
+  ;; CHECK:      (func $outline$ (type $0)
+  ;; CHECK-NEXT:  (drop
+  ;; CHECK-NEXT:   (i32.const 2)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT:  (drop
+  ;; CHECK-NEXT:   (i32.const 1)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+
+  ;; CHECK:      (func $a (type $0)
+  ;; CHECK-NEXT:  (block $label1
+  ;; CHECK-NEXT:   (call $outline$)
+  ;; CHECK-NEXT:   (loop
+  ;; CHECK-NEXT:    (br $label1)
+  ;; CHECK-NEXT:   )
+  ;; CHECK-NEXT:   (call $outline$)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+  (func $a
+    (block $label1
+      (drop
+        (i32.const 2)
+      )
+      (drop
+        (i32.const 1)
+      )
+      (loop
+        (br $label1)
+      )
+      (drop
+        (i32.const 2)
+      )
+      (drop
+        (i32.const 1)
+      )
+    )
+  )
+)
+
+;; Tests br_table instruction is reconstructed without error.
+(module
+  ;; CHECK:      (type $0 (func))
+
+  ;; CHECK:      (type $1 (func (param i32) (result i32)))
+
+  ;; CHECK:      (func $outline$ (type $0)
+  ;; CHECK-NEXT:  (drop
+  ;; CHECK-NEXT:   (i32.const 2)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT:  (drop
+  ;; CHECK-NEXT:   (i32.const 1)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+
+  ;; CHECK:      (func $a (type $1) (param $0 i32) (result i32)
+  ;; CHECK-NEXT:  (call $outline$)
+  ;; CHECK-NEXT:  (block $block
+  ;; CHECK-NEXT:   (block $block1
+  ;; CHECK-NEXT:    (br_table $block $block1
+  ;; CHECK-NEXT:     (local.get $0)
+  ;; CHECK-NEXT:    )
+  ;; CHECK-NEXT:    (return
+  ;; CHECK-NEXT:     (i32.const 21)
+  ;; CHECK-NEXT:    )
+  ;; CHECK-NEXT:   )
+  ;; CHECK-NEXT:   (return
+  ;; CHECK-NEXT:    (i32.const 20)
+  ;; CHECK-NEXT:   )
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT:  (call $outline$)
+  ;; CHECK-NEXT:  (i32.const 22)
+  ;; CHECK-NEXT: )
+  (func $a (param i32) (result i32)
+    (drop
+      (i32.const 2)
+    )
+    (drop
+      (i32.const 1)
+    )
+    (block
+      (block
+        (br_table 1 0 (local.get 0))
+        (return (i32.const 21))
+      )
+      (return (i32.const 20))
+    )
+    (drop
+      (i32.const 2)
+    )
+    (drop
+      (i32.const 1)
+    )
+    (i32.const 22)
+  )
+)
+
 ;; Tests return instructions are correctly filtered from being outlined.
 (module
   ;; CHECK:      (type $0 (func (result i32)))
@@ -882,7 +982,7 @@
   ;; CHECK-NEXT:  (drop
   ;; CHECK-NEXT:   (i32.const 0)
   ;; CHECK-NEXT:  )
-  ;; CHECK-NEXT:  (loop $loop-in
+  ;; CHECK-NEXT:  (loop
   ;; CHECK-NEXT:   (nop)
   ;; CHECK-NEXT:  )
   ;; CHECK-NEXT: )
@@ -904,5 +1004,303 @@
       (i32.const 0)
     )
     (loop (nop))
+  )
+)
+
+;; Test that no attempt is made to outline overlapping repeat substrings
+;; In the below module, the Outlining optimization identifies two substrings
+;; that each repeat twice. During filtering, one of the repeat substrings is
+;; found to have an overlapping interval with itself. Because an interval is
+;; dropped, only one of the substrings repeats enough times (minimum twice)
+;; to warrant outlining.
+(module
+  ;; CHECK:      (type $0 (func))
+
+  ;; CHECK:      (func $outline$ (type $0)
+  ;; CHECK-NEXT:  (drop
+  ;; CHECK-NEXT:   (i32.const 0)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT:  (drop
+  ;; CHECK-NEXT:   (i32.const 1)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT:  (drop
+  ;; CHECK-NEXT:   (i32.const 2)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT:  (drop
+  ;; CHECK-NEXT:   (i32.const 3)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+
+  ;; CHECK:      (func $a (type $0)
+  ;; CHECK-NEXT:  (call $outline$)
+  ;; CHECK-NEXT:  (call $outline$)
+  ;; CHECK-NEXT:  (drop
+  ;; CHECK-NEXT:   (i32.const 1)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT:  (drop
+  ;; CHECK-NEXT:   (i32.const 2)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT:  (drop
+  ;; CHECK-NEXT:   (i32.const 1)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT:  (drop
+  ;; CHECK-NEXT:   (i32.const 2)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+  (func $a
+    i32.const 0 ;; Begin substring 1
+    drop
+    i32.const 1
+    drop
+    i32.const 2
+    drop
+    i32.const 3
+    drop        ;; End substring 1
+    i32.const 0 ;; Begin substring 1 repeat
+    drop
+    i32.const 1
+    drop
+    i32.const 2
+    drop
+    i32.const 3
+    drop        ;; End substring 1 repeat && Begin substring 2
+    i32.const 1
+    drop
+    i32.const 2
+    drop        ;; End substring 2 && Begin substring 2 repeat
+    i32.const 1
+    drop
+    i32.const 2
+    drop        ;; End substring 2 repeat
+  )
+)
+
+;; Tests unreachable type handling
+(module
+  ;; CHECK:      (type $0 (func))
+
+  ;; CHECK:      (type $1 (func (result f32)))
+
+  ;; CHECK:      (type $2 (func (result i32)))
+
+  ;; CHECK:      (func $outline$ (type $0)
+  ;; CHECK-NEXT:  (drop
+  ;; CHECK-NEXT:   (i32.const 0)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT:  (unreachable)
+  ;; CHECK-NEXT: )
+
+  ;; CHECK:      (func $a (type $1) (result f32)
+  ;; CHECK-NEXT:  (call $outline$)
+  ;; CHECK-NEXT:  (unreachable)
+  ;; CHECK-NEXT: )
+  (func $a (result f32)
+    i32.const 0
+    drop
+    unreachable
+  )
+  ;; CHECK:      (func $b (type $2) (result i32)
+  ;; CHECK-NEXT:  (call $outline$)
+  ;; CHECK-NEXT:  (unreachable)
+  ;; CHECK-NEXT: )
+  (func $b (result i32)
+    i32.const 0
+    drop
+    unreachable
+  )
+)
+
+;; Tests that restricted expressions (local.set) are filtered from outlining
+;; even when nested within control flow.
+(module
+  ;; CHECK:      (type $0 (func))
+
+  ;; CHECK:      (func $a (type $0)
+  ;; CHECK-NEXT:  (local $x i32)
+  ;; CHECK-NEXT:  (if
+  ;; CHECK-NEXT:   (i32.const 0)
+  ;; CHECK-NEXT:   (then
+  ;; CHECK-NEXT:    (local.set $x
+  ;; CHECK-NEXT:     (i32.const 1)
+  ;; CHECK-NEXT:    )
+  ;; CHECK-NEXT:   )
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+  (func $a
+    (local $x i32)
+    (block
+      (if
+        (i32.const 0)
+        (then
+          (local.set $x
+            (i32.const 1)
+          )
+        )
+      )
+    )
+  )
+  ;; CHECK:      (func $b (type $0)
+  ;; CHECK-NEXT:  (local $x i32)
+  ;; CHECK-NEXT:  (if
+  ;; CHECK-NEXT:   (i32.const 0)
+  ;; CHECK-NEXT:   (then
+  ;; CHECK-NEXT:    (local.set $x
+  ;; CHECK-NEXT:     (i32.const 1)
+  ;; CHECK-NEXT:    )
+  ;; CHECK-NEXT:   )
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+  (func $b
+    (local $x i32)
+    (block
+      (if
+        (i32.const 0)
+        (then
+          (local.set $x
+            (i32.const 1)
+          )
+        )
+      )
+    )
+  )
+)
+
+;; Tests that the contents of Catch are outlined
+(module
+  ;; CHECK:      (type $1 (func (result i32)))
+
+  ;; CHECK:      (type $0 (func))
+  (type $0 (func))
+  (type $1 (func (result i32)))
+  ;; CHECK:      (tag $eimport$1 (type $0))
+  (tag $eimport$1 (type $0))
+  ;; CHECK:      (func $outline$ (type $1) (result i32)
+  ;; CHECK-NEXT:  (drop
+  ;; CHECK-NEXT:   (i32.const -12)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT:  (i32.const -2147483647)
+  ;; CHECK-NEXT: )
+
+  ;; CHECK:      (func $a (type $1) (result i32)
+  ;; CHECK-NEXT:  (local $0 externref)
+  ;; CHECK-NEXT:  (try (result i32)
+  ;; CHECK-NEXT:   (do
+  ;; CHECK-NEXT:    (i32.const -20)
+  ;; CHECK-NEXT:   )
+  ;; CHECK-NEXT:   (catch $eimport$1
+  ;; CHECK-NEXT:    (call $outline$)
+  ;; CHECK-NEXT:   )
+  ;; CHECK-NEXT:   (catch_all
+  ;; CHECK-NEXT:    (i32.const -15)
+  ;; CHECK-NEXT:   )
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+  (func $a (result i32)
+    (local $0 externref)
+    (try (result i32)
+      (do
+        (i32.const -20)
+      )
+      (catch $eimport$1
+        (drop
+          (i32.const -12)
+        )
+        (i32.const -2147483647)
+      )
+      (catch_all
+        (i32.const -15)
+      )
+    )
+  )
+  ;; CHECK:      (func $b (type $1) (result i32)
+  ;; CHECK-NEXT:  (local $0 externref)
+  ;; CHECK-NEXT:  (try (result i32)
+  ;; CHECK-NEXT:   (do
+  ;; CHECK-NEXT:    (i32.const -20)
+  ;; CHECK-NEXT:   )
+  ;; CHECK-NEXT:   (catch $eimport$1
+  ;; CHECK-NEXT:    (call $outline$)
+  ;; CHECK-NEXT:   )
+  ;; CHECK-NEXT:   (catch_all
+  ;; CHECK-NEXT:    (i32.const -15)
+  ;; CHECK-NEXT:   )
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+  (func $b (result i32)
+    (local $0 externref)
+    (try (result i32)
+      (do
+        (i32.const -20)
+      )
+      (catch $eimport$1
+        (drop
+          (i32.const -12)
+        )
+        (i32.const -2147483647)
+      )
+      (catch_all
+        (i32.const -15)
+      )
+    )
+  )
+)
+
+;; Tests TryTable instructions are correctly filtered from being outlined.
+;; The (drop (i32.const 0)) instructions were added to form an outlineable
+;; sequence with the block that contains the try_table.
+(module
+  ;; CHECK:      (type $1 (func (result (ref exn))))
+
+  ;; CHECK:      (type $0 (func))
+  (type $0 (func))
+  ;; CHECK:      (tag $tag$0 (type $0))
+  (tag $tag$0 (type $0))
+  ;; CHECK:      (func $a (type $1) (result (ref exn))
+  ;; CHECK-NEXT:  (loop $label1
+  ;; CHECK-NEXT:   (drop
+  ;; CHECK-NEXT:    (i32.const 0)
+  ;; CHECK-NEXT:   )
+  ;; CHECK-NEXT:   (block
+  ;; CHECK-NEXT:    (try_table (catch_all $label1)
+  ;; CHECK-NEXT:     (throw $tag$0)
+  ;; CHECK-NEXT:    )
+  ;; CHECK-NEXT:   )
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+  (func $a (result (ref exn))
+    (loop $label1 (result (ref exn))
+      (drop
+        (i32.const 0)
+      )
+      (block (result (ref exn))
+        (try_table (catch_all $label1)
+          (throw $tag$0)
+        )
+      )
+    )
+  )
+  ;; CHECK:      (func $b (type $1) (result (ref exn))
+  ;; CHECK-NEXT:  (loop $label1
+  ;; CHECK-NEXT:   (drop
+  ;; CHECK-NEXT:    (i32.const 0)
+  ;; CHECK-NEXT:   )
+  ;; CHECK-NEXT:   (block
+  ;; CHECK-NEXT:    (try_table (catch_all $label1)
+  ;; CHECK-NEXT:     (throw $tag$0)
+  ;; CHECK-NEXT:    )
+  ;; CHECK-NEXT:   )
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+  (func $b (result (ref exn))
+    (loop $label1 (result (ref exn))
+      (drop
+        (i32.const 0)
+      )
+      (block (result (ref exn))
+        (try_table (catch_all $label1)
+          (throw $tag$0)
+        )
+      )
+    )
   )
 )

@@ -1,9 +1,11 @@
 import os
 
 from scripts.test import shared
+
 from . import utils
 
 
+# Consider adding new tests to test/lit/validation instead
 class FeatureValidationTest(utils.BinaryenTestCase):
     def check_feature(self, module, error, flag, const_flags=[]):
         p = shared.run_process(shared.WASM_OPT +
@@ -30,6 +32,9 @@ class FeatureValidationTest(utils.BinaryenTestCase):
     def check_bulk_mem(self, module, error):
         self.check_feature(module, error, '--enable-bulk-memory')
 
+    def check_bulk_mem_opt(self, module, error):
+        self.check_feature(module, error, '--enable-bulk-memory-opt')
+
     def check_exception_handling(self, module, error):
         self.check_feature(module, error, '--enable-exception-handling')
 
@@ -51,10 +56,10 @@ class FeatureValidationTest(utils.BinaryenTestCase):
         self.check_feature(module, error, '--enable-gc',
                            ['--enable-reference-types'])
 
-    def check_typed_continuations(self, module, error):
-        # Typed continuations implies function references (which is provided by
+    def check_stack_switching(self, module, error):
+        # Stack switching implies function references (which is provided by
         # gc in binaryen, and implies reference types) and exceptions
-        self.check_feature(module, error, '--enable-typed-continuations',
+        self.check_feature(module, error, '--enable-stack-switching',
                            ['--enable-gc', '--enable-reference-types', '--enable-exception-handling'])
 
     def test_v128_signature(self):
@@ -135,8 +140,11 @@ class FeatureValidationTest(utils.BinaryenTestCase):
          )
         )
         '''
+        self.check_bulk_mem_opt(module,
+                                'memory.copy operations require bulk memory operations [--enable-bulk-memory-opt]')
+        # Test that enabling bulk-memory also enables bulk-memory-opt
         self.check_bulk_mem(module,
-                            'Bulk memory operations require bulk memory [--enable-bulk-memory]')
+                            'memory.copy operations require bulk memory operations [--enable-bulk-memory-opt]')
 
     def test_bulk_mem_segment(self):
         module = '''
@@ -246,7 +254,7 @@ class FeatureValidationTest(utils.BinaryenTestCase):
          )
         )
         '''
-        self.check_multivalue(module, 'Multivalue block type require multivalue [--enable-multivalue]')
+        self.check_multivalue(module, 'Block type requires additional features')
 
     def test_i31_global(self):
         module = '''
@@ -290,9 +298,9 @@ class FeatureValidationTest(utils.BinaryenTestCase):
          (tag $foo (result i32))
         )
         '''
-        self.check_typed_continuations(module,
-                                       'Tags with result types require typed '
-                                       'continuations feature [--enable-typed-continuations]')
+        self.check_stack_switching(module,
+                                   'Tags with result types require stack '
+                                   'switching feature [--enable-stack-switching]')
 
     def test_cont_type(self):
         module = '''
@@ -304,7 +312,24 @@ class FeatureValidationTest(utils.BinaryenTestCase):
          )
         )
         '''
-        self.check_typed_continuations(module, 'all used types should be allowed')
+        self.check_stack_switching(module, 'all used types should be allowed')
+
+    def test_call_indirect_overlong(self):
+        # Check that the call-indirect-overlong enable and disable are ignored.
+        module = '''
+        (module)
+        '''
+
+        def check_nop(flag):
+            p = shared.run_process(
+                shared.WASM_OPT + ['--mvp-features', '--print', '-o', os.devnull] +
+                [flag],
+                input=module,
+                check=False,
+                capture_output=True)
+            self.assertEqual(p.returncode, 0)
+        check_nop('--enable-call-indirect-overlong')
+        check_nop('--disable-call-indirect-overlong')
 
 
 class TargetFeaturesSectionTest(utils.BinaryenTestCase):
@@ -314,10 +339,10 @@ class TargetFeaturesSectionTest(utils.BinaryenTestCase):
         self.check_features(filename, ['threads'])
         self.assertIn('i32.atomic.rmw.add', self.disassemble(filename))
 
-    def test_bulk_memory(self):
+    def test_bulk_memory_opt(self):
         filename = 'bulkmem_target_feature.wasm'
         self.roundtrip(filename)
-        self.check_features(filename, ['bulk-memory'])
+        self.check_features(filename, ['bulk-memory-opt'])
         self.assertIn('memory.copy', self.disassemble(filename))
 
     def test_nontrapping_fptoint(self):
@@ -424,5 +449,12 @@ class TargetFeaturesSectionTest(utils.BinaryenTestCase):
             '--enable-extended-const',
             '--enable-strings',
             '--enable-multimemory',
-            '--enable-typed-continuations',
+            '--enable-stack-switching',
+            '--enable-shared-everything',
+            '--enable-fp16',
+            '--enable-bulk-memory-opt',
+            '--enable-call-indirect-overlong',
+            '--enable-custom-descriptors',
+            '--enable-relaxed-atomics',
+            '--enable-custom-page-sizes',
         ], p2.stdout.splitlines())

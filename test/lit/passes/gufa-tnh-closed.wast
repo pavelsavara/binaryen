@@ -38,7 +38,7 @@
   )
 
   ;; CHECK:      (func $caller (type $2) (param $x funcref)
-  ;; CHECK-NEXT:  (block ;; (replaces something unreachable we can't emit)
+  ;; CHECK-NEXT:  (block ;; (replaces unreachable CallRef we can't emit)
   ;; CHECK-NEXT:   (drop
   ;; CHECK-NEXT:    (unreachable)
   ;; CHECK-NEXT:   )
@@ -83,7 +83,7 @@
   )
 
   ;; CHECK:      (func $caller (type $0) (param $x funcref)
-  ;; CHECK-NEXT:  (block ;; (replaces something unreachable we can't emit)
+  ;; CHECK-NEXT:  (block ;; (replaces unreachable CallRef we can't emit)
   ;; CHECK-NEXT:   (drop
   ;; CHECK-NEXT:    (unreachable)
   ;; CHECK-NEXT:   )
@@ -296,13 +296,13 @@
 (module
   (rec
     ;; CHECK:      (rec
-    ;; CHECK-NEXT:  (type $X (sub (struct )))
+    ;; CHECK-NEXT:  (type $X (sub (struct)))
     (type $X (sub (struct)))
 
-    ;; CHECK:       (type $Y1 (sub $X (struct )))
+    ;; CHECK:       (type $Y1 (sub $X (struct)))
     (type $Y1 (sub $X (struct)))
 
-    ;; CHECK:       (type $Y2 (sub $X (struct )))
+    ;; CHECK:       (type $Y2 (sub $X (struct)))
     (type $Y2 (sub $X (struct)))
 
     ;; CHECK:       (type $A (func (param anyref)))
@@ -421,13 +421,13 @@
 (module
   (rec
     ;; CHECK:      (rec
-    ;; CHECK-NEXT:  (type $X (sub (struct )))
+    ;; CHECK-NEXT:  (type $X (sub (struct)))
     (type $X (sub (struct)))
 
-    ;; CHECK:       (type $Y1 (sub $X (struct )))
+    ;; CHECK:       (type $Y1 (sub $X (struct)))
     (type $Y1 (sub $X (struct)))
 
-    ;; CHECK:       (type $Y2 (sub $X (struct )))
+    ;; CHECK:       (type $Y2 (sub $X (struct)))
     (type $Y2 (sub $X (struct)))
 
     ;; CHECK:       (type $A (func (param anyref anyref)))
@@ -496,7 +496,7 @@
   ;; CHECK-NEXT:    (local.get $func3)
   ;; CHECK-NEXT:   )
   ;; CHECK-NEXT:  )
-  ;; CHECK-NEXT:  (block ;; (replaces something unreachable we can't emit)
+  ;; CHECK-NEXT:  (block ;; (replaces unreachable CallRef we can't emit)
   ;; CHECK-NEXT:   (drop
   ;; CHECK-NEXT:    (struct.new_default $Y2)
   ;; CHECK-NEXT:   )
@@ -659,13 +659,13 @@
 (module
   (rec
     ;; CHECK:      (rec
-    ;; CHECK-NEXT:  (type $X (sub (struct )))
+    ;; CHECK-NEXT:  (type $X (sub (struct)))
     (type $X (sub (struct)))
 
-    ;; CHECK:       (type $Y1 (sub $X (struct )))
+    ;; CHECK:       (type $Y1 (sub $X (struct)))
     (type $Y1 (sub $X (struct)))
 
-    ;; CHECK:       (type $Y2 (sub $X (struct )))
+    ;; CHECK:       (type $Y2 (sub $X (struct)))
     (type $Y2 (sub $X (struct)))
 
     ;; CHECK:       (type $A (func (param anyref anyref anyref anyref anyref anyref)))
@@ -885,13 +885,13 @@
 (module
   (rec
     ;; CHECK:      (rec
-    ;; CHECK-NEXT:  (type $X (sub (struct )))
+    ;; CHECK-NEXT:  (type $X (sub (struct)))
     (type $X (sub (struct)))
 
-    ;; CHECK:       (type $Y1 (sub $X (struct )))
+    ;; CHECK:       (type $Y1 (sub $X (struct)))
     (type $Y1 (sub $X (struct)))
 
-    ;; CHECK:       (type $Y2 (sub $X (struct )))
+    ;; CHECK:       (type $Y2 (sub $X (struct)))
     (type $Y2 (sub $X (struct)))
 
     ;; CHECK:       (type $A (func (param (ref null $X) (ref null $X) (ref null $X))))
@@ -1041,13 +1041,13 @@
 (module
   (rec
     ;; CHECK:      (rec
-    ;; CHECK-NEXT:  (type $X (sub (struct )))
+    ;; CHECK-NEXT:  (type $X (sub (struct)))
     (type $X (sub (struct)))
 
-    ;; CHECK:       (type $Y1 (sub $X (struct )))
+    ;; CHECK:       (type $Y1 (sub $X (struct)))
     (type $Y1 (sub $X (struct)))
 
-    ;; CHECK:       (type $Y2 (sub $X (struct )))
+    ;; CHECK:       (type $Y2 (sub $X (struct)))
     (type $Y2 (sub $X (struct)))
 
     ;; CHECK:       (type $A (func (param anyref)))
@@ -1060,7 +1060,7 @@
 
   ;; CHECK:      (func $called (type $A) (param $ref anyref)
   ;; CHECK-NEXT:  (drop
-  ;; CHECK-NEXT:   (ref.cast (ref null $Y1)
+  ;; CHECK-NEXT:   (ref.cast (ref null (exact $Y1))
   ;; CHECK-NEXT:    (local.get $ref)
   ;; CHECK-NEXT:   )
   ;; CHECK-NEXT:  )
@@ -1081,7 +1081,7 @@
   ;; CHECK-NEXT:   (unreachable)
   ;; CHECK-NEXT:  )
   ;; CHECK-NEXT:  (call $called
-  ;; CHECK-NEXT:   (ref.cast (ref $Y1)
+  ;; CHECK-NEXT:   (ref.cast (ref (exact $Y1))
   ;; CHECK-NEXT:    (select (result (ref $X))
   ;; CHECK-NEXT:     (struct.new_default $Y1)
   ;; CHECK-NEXT:     (struct.new_default $Y2)

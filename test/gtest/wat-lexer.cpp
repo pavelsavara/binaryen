@@ -77,9 +77,6 @@ TEST(LexerTest, LexBlockComment) {
 }
 
 TEST(LexerTest, LexParens) {
-  Token left{"("sv, LParenTok{}};
-  Token right{")"sv, RParenTok{}};
-
   Lexer lexer("(())"sv);
 
   ASSERT_FALSE(lexer.empty());
@@ -891,7 +888,7 @@ TEST(LexerTest, LexIdent) {
   EXPECT_FALSE(Lexer("$"sv).takeID());
 
   // String IDs
-  EXPECT_EQ(Lexer("$\"\""sv).takeID(), wasm::Name(""sv));
+  EXPECT_EQ(Lexer("$\"\""sv).takeID(), std::nullopt);
   EXPECT_EQ(Lexer("$\"hello\""sv).takeID(), wasm::Name("hello"sv));
   // _$_£_€_𐍈_
   EXPECT_EQ(Lexer("$\"_\\u{24}_\\u{00a3}_\\u{20AC}_\\u{10348}_\""sv).takeID(),
@@ -932,6 +929,17 @@ TEST(LexerTest, LexString) {
   EXPECT_FALSE(
     Lexer("\"more surrogate unicode crimes \\u{dfff}\""sv).takeString());
   EXPECT_FALSE(Lexer("\"too big \\u{110000}\""sv).takeString());
+}
+
+TEST(LexerTest, Annotations) {
+  Lexer lexer(
+    "      (@metadata.code.branch_hint \"\\01\")\n      (@metadata.code.branch_hint \"\\00\")\n      (br_if $out"sv);
+  // Trigger advance/skipSpace which parses annotations.
+  lexer.takeID();
+  auto annotations = lexer.takeAnnotations();
+  ASSERT_EQ(annotations.size(), 2u);
+  EXPECT_EQ(annotations[0].contents, " \"\\01\""sv);
+  EXPECT_EQ(annotations[1].contents, " \"\\00\""sv);
 }
 
 TEST(LexerTest, LexKeywords) {

@@ -50,7 +50,7 @@
   ;; CHECK-NEXT:  (call_ref $A
   ;; CHECK-NEXT:   (local.get $A)
   ;; CHECK-NEXT:  )
-  ;; CHECK-NEXT:  (block ;; (replaces something unreachable we can't emit)
+  ;; CHECK-NEXT:  (block ;; (replaces unreachable CallRef we can't emit)
   ;; CHECK-NEXT:   (drop
   ;; CHECK-NEXT:    (unreachable)
   ;; CHECK-NEXT:   )
@@ -80,7 +80,7 @@
   ;; OPEN_WORLD-NEXT:  (call_ref $A
   ;; OPEN_WORLD-NEXT:   (local.get $A)
   ;; OPEN_WORLD-NEXT:  )
-  ;; OPEN_WORLD-NEXT:  (block ;; (replaces something unreachable we can't emit)
+  ;; OPEN_WORLD-NEXT:  (block ;; (replaces unreachable CallRef we can't emit)
   ;; OPEN_WORLD-NEXT:   (drop
   ;; OPEN_WORLD-NEXT:    (unreachable)
   ;; OPEN_WORLD-NEXT:   )
@@ -113,10 +113,8 @@
   )
 
   ;; CHECK:      (func $target-A (type $A)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $target-A (type $A)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $target-A (type $A)
     ;; This function is reachable from the export "foo": there is a RefFunc and
@@ -129,10 +127,8 @@
   )
 
   ;; CHECK:      (func $target-A-sub (type $A-sub)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $target-A-sub (type $A-sub)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $target-A-sub (type $A-sub)
     ;; This function is reachable because we have a CallRef of a supertype ($A).
@@ -142,7 +138,6 @@
   ;; CHECK-NEXT:  (unreachable)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $target-A-super (type $A-super)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $target-A-super (type $A-super)
     ;; This function is not reachable. We have a CallRef of a subtype ($A), but
@@ -153,7 +148,6 @@
   ;; CHECK-NEXT:  (unreachable)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $target-B (type $B)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $target-B (type $B)
     ;; This function is not reachable. We have a RefFunc in "foo" but no
@@ -213,10 +207,8 @@
   )
 
   ;; CHECK:      (func $target-A (type $A)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $target-A (type $A)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $target-A (type $A)
     ;; This function is reachable.
@@ -290,20 +282,16 @@
 
   ;; WORLD_OPEN-NEXT: )
   ;; CHECK:      (func $target-A-1 (type $A)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $target-A-1 (type $A)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $target-A-1 (type $A)
     ;; This function is reachable.
   )
 
   ;; CHECK:      (func $target-A-2 (type $A)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $target-A-2 (type $A)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $target-A-2 (type $A)
     ;; This function is reachable.
@@ -377,20 +365,16 @@
   )
 
   ;; CHECK:      (func $target-A-1 (type $A)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $target-A-1 (type $A)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $target-A-1 (type $A)
     ;; This function is reachable.
   )
 
   ;; CHECK:      (func $target-A-2 (type $A)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $target-A-2 (type $A)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $target-A-2 (type $A)
     ;; This function is reachable.
@@ -524,10 +508,8 @@
   )
 
   ;; CHECK:      (func $target-keep (type $A)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $target-keep (type $A)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $target-keep (type $A)
   )
@@ -536,7 +518,6 @@
   ;; CHECK-NEXT:  (unreachable)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $target-drop (type $A)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $target-drop (type $A)
     ;; In a closed world we can turn this body into unreachable.
@@ -617,19 +598,15 @@
   )
 
   ;; CHECK:      (func $target-keep (type $A)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $target-keep (type $A)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $target-keep (type $A)
   )
 
   ;; CHECK:      (func $target-keep-2 (type $A)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $target-keep-2 (type $A)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $target-keep-2 (type $A)
   )
@@ -810,7 +787,7 @@
   ;; CHECK-NEXT:   )
   ;; CHECK-NEXT:  )
   ;; CHECK-NEXT:  (drop
-  ;; CHECK-NEXT:   (block ;; (replaces something unreachable we can't emit)
+  ;; CHECK-NEXT:   (block ;; (replaces unreachable StructNew we can't emit)
   ;; CHECK-NEXT:    (drop
   ;; CHECK-NEXT:     (unreachable)
   ;; CHECK-NEXT:    )
@@ -871,7 +848,7 @@
   ;; OPEN_WORLD-NEXT:   )
   ;; OPEN_WORLD-NEXT:  )
   ;; OPEN_WORLD-NEXT:  (drop
-  ;; OPEN_WORLD-NEXT:   (block ;; (replaces something unreachable we can't emit)
+  ;; OPEN_WORLD-NEXT:   (block ;; (replaces unreachable StructNew we can't emit)
   ;; OPEN_WORLD-NEXT:    (drop
   ;; OPEN_WORLD-NEXT:     (unreachable)
   ;; OPEN_WORLD-NEXT:    )
@@ -974,10 +951,8 @@
   )
 
   ;; CHECK:      (func $void (type $void)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $void (type $void)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $void (type $void)
     ;; Helper function. This is reached via a call_ref.
@@ -987,7 +962,6 @@
   ;; CHECK-NEXT:  (unreachable)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $a (type $void)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $a (type $void)
     ;; This is unreachable (in closed world) since a reference to it only exists
@@ -995,10 +969,8 @@
   )
 
   ;; CHECK:      (func $b (type $void)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $b (type $void)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $b (type $void)
     ;; This is reachable. It is in field #1, which is read, and the global
@@ -1009,7 +981,6 @@
   ;; CHECK-NEXT:  (unreachable)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $c (type $void)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $c (type $void)
     ;; Like $a, this is unreachable. That it is in a nested struct.new, and not
@@ -1017,10 +988,8 @@
   )
 
   ;; CHECK:      (func $d (type $void)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $d (type $void)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $d (type $void)
     ;; Like $b, this is reachable. That it is in a nested struct.new, and not
@@ -1031,7 +1000,6 @@
   ;; CHECK-NEXT:  (unreachable)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $e (type $void)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $e (type $void)
     ;; Side effects on the struct field are not enough to make this reachable:
@@ -1040,10 +1008,8 @@
   )
 
   ;; CHECK:      (func $f (type $void)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $f (type $void)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $f (type $void)
     ;; Like $b, this is reachable (the tee does not matter).
@@ -1053,7 +1019,6 @@
   ;; CHECK-NEXT:  (unreachable)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $g (type $void)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $g (type $void)
     ;; This is in a struct written to a field that is never read in $struct, so
@@ -1064,7 +1029,6 @@
   ;; CHECK-NEXT:  (unreachable)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $h (type $void)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $h (type $void)
     ;; This is in a struct written to a field that is never read in $struct, so
@@ -1141,10 +1105,8 @@
   )
 
   ;; CHECK:      (func $void (type $void)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $void (type $void)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $void (type $void)
     ;; Helper function. This is reached via a call_ref.
@@ -1154,7 +1116,6 @@
   ;; CHECK-NEXT:  (unreachable)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $a (type $void)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $a (type $void)
     ;; This is unreachable (in closed world) because we have no reads from the
@@ -1162,10 +1123,8 @@
   )
 
   ;; CHECK:      (func $b (type $void)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $b (type $void)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $b (type $void)
     ;; The local.tee makes this reachable: the value is not known to only reside
@@ -1503,7 +1462,6 @@
   ;; CHECK-NEXT:  (unreachable)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $f (type $void)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $f (type $void)
     ;; This is unreachable in closed world. The global it is in has a reference
@@ -1511,20 +1469,16 @@
   )
 
   ;; CHECK:      (func $subf (type $void)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $subf (type $void)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $subf (type $void)
     ;; There is a read of $substruct's field, which makes this reachable.
   )
 
   ;; CHECK:      (func $subsubf (type $void)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $subsubf (type $void)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $subsubf (type $void)
     ;; There is a read of $substruct's field, which may read from any subtype,
@@ -1607,10 +1561,8 @@
   )
 
   ;; CHECK:      (func $f1 (type $void)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $f1 (type $void)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $f1 (type $void)
     ;; The global containing this function's reference is used.
@@ -1620,7 +1572,6 @@
   ;; CHECK-NEXT:  (unreachable)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $f2 (type $void)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $f2 (type $void)
     ;; This is unreachable in closed world as the global is referred to from a
@@ -1727,7 +1678,6 @@
   ;; CHECK-NEXT:  (unreachable)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $f (type $void)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $f (type $void)
     ;; This is unreachable in closed world since $B's field is not read, so the
@@ -1851,10 +1801,8 @@
   )
 
   ;; CHECK:      (func $f (type $void)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   ;; OPEN_WORLD:      (func $f (type $void)
-  ;; OPEN_WORLD-NEXT:  (nop)
   ;; OPEN_WORLD-NEXT: )
   (func $f (type $void)
   )

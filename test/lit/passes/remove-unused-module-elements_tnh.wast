@@ -162,13 +162,7 @@
  (elem $bad (i32.const 10) $func)
 
  ;; CHECK:      (func $func (type $0)
- ;; CHECK-NEXT:  (nop)
  ;; CHECK-NEXT: )
- ;; T_N_H:      (type $0 (func))
-
- ;; T_N_H:      (func $func (type $0)
- ;; T_N_H-NEXT:  (nop)
- ;; T_N_H-NEXT: )
  (func $func)
 )
 
@@ -190,17 +184,11 @@
  (elem $bad (i32.const 9) $func $func)
 
  ;; CHECK:      (func $func (type $0)
- ;; CHECK-NEXT:  (nop)
  ;; CHECK-NEXT: )
- ;; T_N_H:      (type $0 (func))
-
- ;; T_N_H:      (func $func (type $0)
- ;; T_N_H-NEXT:  (nop)
- ;; T_N_H-NEXT: )
  (func $func)
 )
 
-;; No bad segments: all element segments vanish. TODO: the function could too
+;; No bad segments: all element segments vanish.
 (module
  (table 10 10 funcref)
 
@@ -208,16 +196,6 @@
  (elem $ok2 (i32.const 8) $func $func)
  (elem $ok3 (i32.const 9) $func)
 
- ;; CHECK:      (type $0 (func))
-
- ;; CHECK:      (func $func (type $0)
- ;; CHECK-NEXT:  (nop)
- ;; CHECK-NEXT: )
- ;; T_N_H:      (type $0 (func))
-
- ;; T_N_H:      (func $func (type $0)
- ;; T_N_H-NEXT:  (nop)
- ;; T_N_H-NEXT: )
  (func $func)
 )
 
@@ -246,4 +224,15 @@
  (data $a (memory $small) (i32.const 100000) "ab") ;; fits in $big; not $small
 
  (data $b (memory $big)   (i32.const 100000) "cd")
+)
+
+;; Add a module T_N_H cannot remove, as otherwise lit errors on not finding
+;; any check strings with that prefix.
+(module
+ ;; CHECK:      (memory $mem 2 2)
+ ;; T_N_H:      (memory $mem 2 2)
+ (memory $mem 2 2)
+ ;; CHECK:      (export "mem" (memory $mem))
+ ;; T_N_H:      (export "mem" (memory $mem))
+ (export "mem" (memory $mem))
 )

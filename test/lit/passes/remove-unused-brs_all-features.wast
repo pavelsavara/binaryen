@@ -64,9 +64,10 @@
  )
 
  ;; CHECK:      (func $test-prefinalize (type $4) (result f64)
+ ;; CHECK-NEXT:  (local $x i32)
  ;; CHECK-NEXT:  (loop $loop (result f64)
  ;; CHECK-NEXT:   (if (result f64)
- ;; CHECK-NEXT:    (i32.const 1)
+ ;; CHECK-NEXT:    (local.get $x)
  ;; CHECK-NEXT:    (then
  ;; CHECK-NEXT:     (f64.const 0)
  ;; CHECK-NEXT:    )
@@ -85,12 +86,13 @@
  ;; CHECK-NEXT:  )
  ;; CHECK-NEXT: )
  (func $test-prefinalize (result f64)
+  (local $x i32)
   (loop $loop (result f64)
    (block $block (result f64)
     (drop
      (br_if $block
       (f64.const 0)
-      (i32.const 1)
+      (local.get $x)
      )
     )
     (if
@@ -115,12 +117,11 @@
   (unreachable)
  )
  ;; CHECK:      (func $i32_=>_none (type $2) (param $0 i32)
- ;; CHECK-NEXT:  (nop)
  ;; CHECK-NEXT: )
  (func $i32_=>_none (param i32)
  )
  ;; CHECK:      (func $selectify (type $6) (param $x i32) (result funcref)
- ;; CHECK-NEXT:  (select (result funcref)
+ ;; CHECK-NEXT:  (select (result (ref func))
  ;; CHECK-NEXT:   (ref.func $none_=>_i32)
  ;; CHECK-NEXT:   (ref.func $i32_=>_none)
  ;; CHECK-NEXT:   (local.get $x)

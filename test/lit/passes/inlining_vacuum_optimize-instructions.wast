@@ -11,7 +11,7 @@
 ;; which is temporarily inconsistent. We must be careful to avoid confusion
 ;; there.
 (module
- ;; CHECK:      (type $B (sub (struct )))
+ ;; CHECK:      (type $B (sub (struct)))
  (type $B (sub (struct )))
  ;; CHECK:      (type $A (sub (struct (field (ref null $B)))))
  (type $A (sub (struct (field (ref null $B)))))
@@ -19,7 +19,7 @@
 
  ;; CHECK:      (func $target (type $2) (param $0 (ref null $A))
  ;; CHECK-NEXT:  (drop
- ;; CHECK-NEXT:   (block ;; (replaces something unreachable we can't emit)
+ ;; CHECK-NEXT:   (block ;; (replaces unreachable RefCast we can't emit)
  ;; CHECK-NEXT:    (drop
  ;; CHECK-NEXT:     (unreachable)
  ;; CHECK-NEXT:    )

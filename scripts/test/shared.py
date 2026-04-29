@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 
 import argparse
 import difflib
@@ -20,12 +19,15 @@ import fnmatch
 import glob
 import os
 import shutil
+import stat
 import subprocess
 import sys
+from contextlib import contextmanager
+from pathlib import Path
 
 # The C++ standard whose features are required to build Binaryen.
 # Keep in sync with CMakeLists.txt CXX_STANDARD
-cxx_standard = 17
+cxx_standard = 20
 
 
 def parse_args(args):
@@ -39,15 +41,10 @@ def parse_args(args):
         '--no-torture', dest='torture', action='store_false',
         help='Disables running the torture testcases.')
     parser.add_argument(
-        '--abort-on-first-failure', dest='abort_on_first_failure',
-        action='store_true', default=True,
+        '--abort-on-first-failure', '--fail-fast', dest='abort_on_first_failure',
+        action=argparse.BooleanOptionalAction, default=True,
         help=('Specifies whether to halt test suite execution on first test error.'
               ' Default: true.'))
-    parser.add_argument(
-        '--no-abort-on-first-failure', dest='abort_on_first_failure',
-        action='store_false',
-        help=('If set, the whole test suite will run to completion independent of'
-              ' earlier errors.'))
     parser.add_argument(
         '--binaryen-bin', dest='binaryen_bin', default='',
         help=('Specifies the path to the Binaryen executables in the CMake build'
@@ -79,7 +76,7 @@ def parse_args(args):
         help=('If specified, all unfreed (but still referenced) pointers at the'
               ' end of execution are considered memory leaks. Default: disabled.'))
     parser.add_argument(
-        '--spec-test', action='append', nargs='*', default=[], dest='spec_tests',
+        '--spec-test', action='append', default=[], dest='spec_tests',
         help='Names specific spec tests to run.')
     parser.add_argument(
         'positional_args', metavar='TEST_SUITE', nargs='*',
@@ -113,7 +110,6 @@ warnings = []
 
 
 def warn(text):
-    global warnings
     warnings.append(text)
     print('warning:', text, file=sys.stderr)
 
@@ -159,7 +155,6 @@ if not options.out_dir:
 
 if not os.path.exists(options.out_dir):
     os.makedirs(options.out_dir)
-os.chdir(options.out_dir)
 
 
 # Finds the given executable 'program' in PATH.
@@ -176,7 +171,7 @@ def which(program):
             # Prefer tools installed using third_party/setup.py
             os.path.join(options.binaryen_root, 'third_party', 'mozjs'),
             os.path.join(options.binaryen_root, 'third_party', 'v8'),
-            os.path.join(options.binaryen_root, 'third_party', 'wabt', 'bin')
+            os.path.join(options.binaryen_root, 'third_party', 'wabt', 'bin'),
         ] + os.environ['PATH'].split(os.pathsep)
         for path in paths:
             path = path.strip('"')
@@ -196,10 +191,10 @@ NATIVECC = (os.environ.get('CC') or which('mingw32-gcc') or
             which('gcc') or which('clang'))
 NATIVEXX = (os.environ.get('CXX') or which('mingw32-g++') or
             which('g++') or which('clang++'))
-NODEJS = os.getenv('NODE', which('node') or which('nodejs'))
+NODEJS = os.environ.get('NODE') or which('node') or which('nodejs')
 MOZJS = which('mozjs') or which('spidermonkey')
 
-V8 = which('v8') or which('d8')
+V8 = os.environ.get('V8') or which('v8') or which('d8')
 
 BINARYEN_INSTALL_DIR = os.path.dirname(options.binaryen_bin)
 WASM_OPT = [os.path.join(options.binaryen_bin, 'wasm-opt')]
@@ -213,7 +208,6 @@ WASM_METADCE = [os.path.join(options.binaryen_bin, 'wasm-metadce')]
 WASM_EMSCRIPTEN_FINALIZE = [os.path.join(options.binaryen_bin,
                                          'wasm-emscripten-finalize')]
 BINARYEN_JS = os.path.join(options.binaryen_bin, 'binaryen_js.js')
-BINARYEN_WASM = os.path.join(options.binaryen_bin, 'binaryen_wasm.js')
 
 
 def wrap_with_valgrind(cmd):
@@ -256,21 +250,17 @@ def has_shell_timeout():
 V8_OPTS = [
     '--wasm-staging',
     '--experimental-wasm-compilation-hints',
-    '--experimental-wasm-gc',
-    '--experimental-wasm-typed-funcref',
-    '--experimental-wasm-memory64',
-    '--experimental-wasm-extended-const',
     '--experimental-wasm-stringref',
-    '--wasm-final-types',
+    '--experimental-wasm-fp16',
+    '--experimental-wasm-custom-descriptors',
+    '--experimental-wasm-js-interop',
 ]
 
 # external tools
 
 try:
     if NODEJS is not None:
-        subprocess.check_call([NODEJS, '--version'],
-                              stdout=subprocess.PIPE,
-                              stderr=subprocess.PIPE)
+        subprocess.run([NODEJS, '--version'], check=True, capture_output=True)
 except (OSError, subprocess.CalledProcessError):
     NODEJS = None
 if NODEJS is None:
@@ -294,7 +284,6 @@ def delete_from_orbit(filename):
     if not os.path.exists(filename):
         return
     try:
-        import stat
         os.chmod(filename, os.stat(filename).st_mode | stat.S_IWRITE)
 
         def remove_readonly_and_try_again(func, path, exc_info):
@@ -302,29 +291,16 @@ def delete_from_orbit(filename):
                 os.chmod(path, os.stat(path).st_mode | stat.S_IWRITE)
                 func(path)
             else:
-                raise
+                raise exc_info[1]
         shutil.rmtree(filename, onerror=remove_readonly_and_try_again)
     except OSError:
         pass
 
 
-# This is a workaround for https://bugs.python.org/issue9400
-class Py2CalledProcessError(subprocess.CalledProcessError):
-    def __init__(self, returncode, cmd, output=None, stderr=None):
-        super(Exception, self).__init__(returncode, cmd, output, stderr)
-        self.returncode = returncode
-        self.cmd = cmd
-        self.output = output
-        self.stderr = stderr
-
-
-def run_process(cmd, check=True, input=None, capture_output=False, decode_output=True, *args, **kw):
-    if input and type(input) == str:
+def run_process(cmd, check=True, input=None, decode_output=True, *args, **kwargs):
+    if input and type(input) is str:
         input = bytes(input, 'utf-8')
-    if capture_output:
-        kw['stdout'] = subprocess.PIPE
-        kw['stderr'] = subprocess.PIPE
-    ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
+    ret = subprocess.run(cmd, *args, check=check, input=input, **kwargs)
     if decode_output and ret.stdout is not None:
         ret.stdout = ret.stdout.decode('utf-8')
     if ret.stderr is not None:
@@ -348,7 +324,7 @@ def fail(actual, expected, fromfile='expected'):
         expected.split('\n'), actual.split('\n'),
         fromfile=fromfile, tofile='actual')
     diff_str = ''.join([a.rstrip() + '\n' for a in diff_lines])[:]
-    fail_with_error("incorrect output, diff:\n\n%s" % diff_str)
+    fail_with_error(f'incorrect output, diff:\n\n{diff_str}')
 
 
 def fail_if_not_identical(actual, expected, fromfile='expected'):
@@ -362,7 +338,7 @@ def fail_if_not_contained(actual, expected):
 
 
 def fail_if_not_identical_to_file(actual, expected_file):
-    binary = expected_file.endswith(".wasm") or type(actual) == bytes
+    binary = expected_file.endswith(".wasm") or type(actual) is bytes
     with open(expected_file, 'rb' if binary else 'r') as f:
         fail_if_not_identical(actual, f.read(), fromfile=expected_file)
 
@@ -388,10 +364,15 @@ def get_tests(test_dir, extensions=[], recursive=False):
     return sorted(tests)
 
 
-if not options.spec_tests:
-    options.spec_tests = get_tests(get_test_dir('spec'), ['.wast'])
+if options.spec_tests:
+    non_existent_tests = [test_name for test_name in options.spec_tests if not os.path.isfile(test_name)]
+    if non_existent_tests:
+        raise ValueError(f"Supplied test files do not exist: {non_existent_tests}")
+    options.spec_tests = [os.path.abspath(t) for t in options.spec_tests]
 else:
-    options.spec_tests = options.spec_tests[:]
+    options.spec_tests = get_tests(get_test_dir('spec'), ['.wast'], recursive=True)
+
+os.chdir(options.out_dir)
 
 # 11/27/2019: We updated the spec test suite to upstream spec repo. For some
 # files that started failing after this update, we added the new files to this
@@ -401,119 +382,130 @@ else:
 # corresponding 'old_[FILENAME].wast' file. When you fix the new file and
 # delete the old file, make sure you rename the corresponding .wast.log file in
 # expected-output/ if any.
+# Paths are relative to the test/spec directory
 SPEC_TESTS_TO_SKIP = [
-    # Stacky code / notation
-    'block.wast',
-    'call.wast',
-    'float_exprs.wast',
-    'globals.wast',
-    'loop.wast',
-    'nop.wast',
-    'select.wast',
-    'stack.wast',
-    'unwind.wast',
+    # Requires us to write our own floating point parser
+    'const.wast',
 
-    # Binary module
-    'binary.wast',
-    'binary-leb128.wast',
-    'custom.wast',
+    # Invalid module accepted
+    'unreached-invalid.wast',
 
-    # Empty 'then' or 'else' in 'if'
-    'if.wast',
-    'local_set.wast',
-    'store.wast',
+    # Test invalid
+    'elem.wast',
 
-    # No module in a file
-    'token.wast',
-    'utf8-custom-section-id.wast',
-    'utf8-import-field.wast',
-    'utf8-import-module.wast',
-    'utf8-invalid-encoding.wast',
+    # Requires scoping of `register` statements within `thread` blocks
+    'threads/thread.wast',
 
-    # 'register' command
-    'linking.wast',
+    # Requires better support for multi-threaded tests
+    'threads/wait_notify.wast',
 
-    # Misc. unsupported constructs
-    'call_indirect.wast',  # Empty (param) and (result)
-    'const.wast',  # Unparenthesized expression
-    'data.wast',  # Various unsupported (data) notations
-    'elem.wast',  # Unsupported 'offset' syntax in (elem)
-    'exports.wast',  # Multiple inlined exports for a function
-    'func.wast',  # Forward named type reference
-    'skip-stack-guard-page.wast',  # Hexadecimal style (0x..) in memory offset
-
-    # Untriaged: We don't know the cause of the error yet
-    'address.wast',  # wasm2js 'assert_return' failure
-    'br_if.wast',  # Validation error
-    'float_literals.wast',  # 'assert_return' failure
-    'int_literals.wast',  # 'assert_return' failure
-    'local_tee.wast',  # Validation failure
-    'memory_grow.wast',  # 'assert_return' failure
-    'start.wast',  # Assertion failure
-    'type.wast',  # 'assertion_invalid' failure
-    'unreachable.wast',  # Validation failure
-    'unreached-invalid.wast'  # 'assert_invalid' failure
+    # Non-natural alignment is invalid for atomic operations
+    'threads/atomic.wast',
 ]
-options.spec_tests = [t for t in options.spec_tests if os.path.basename(t) not
-                      in SPEC_TESTS_TO_SKIP]
+SPEC_TESTSUITE_PROPOSALS_TO_SKIP = [
+    'wide-arithmetic',
+]
+
+# Paths are relative to the test/spec/testsuite directory
+SPEC_TESTSUITE_TESTS_TO_SKIP = [
+    'array_new_elem.wast',  # Failure to parse element segment item abbreviation
+    'binary.wast',   # Missing data count section validation
+    'comments.wast',  # Issue with carriage returns being treated as newlines
+    'const.wast',    # Hex float constant not recognized as out of range
+    'data.wast',    # Fail to parse data segment offset abbreviation
+    'elem.wast',    # Requires modeling empty declarative segments
+    'func.wast',    # Duplicate parameter names not properly rejected
+    'if.wast',      # Requires more precise unreachable validation
+    'imports.wast',  # Requires fixing handling of mutation to imported globals
+    'proposals/threads/imports.wast',  # Missing memory type validation on instantiation
+    'proposals/threads/memory.wast',  # Missing memory type validation on instantiation
+    'annotations.wast',  # String annotations IDs should be allowed
+    'table64.wast',   # Requires validations for table size
+    'tag.wast',      # Non-empty tag results allowed by stack switching
+    'local_init.wast',  # Requires local validation to respect unnamed blocks
+    'ref_func.wast',   # Requires rejecting undeclared functions references
+    'return_call_indirect.wast',  # Requires more precise unreachable validation
+    'select.wast',  # Missing validation of type annotation on select
+    'unreached-invalid.wast',  # Requires more precise unreachable validation
+    'array.wast',  # Failure to parse element segment item abbreviation
+    'br_if.wast',  # Requires more precise branch validation
+    'br_on_cast.wast',  # Requires host references to not be externalized i31refs
+    'br_on_cast_fail.wast',  # Requires host references to not be externalized i31refs
+    'extern.wast',    # Requires ref.host wast constants
+    'ref_cast.wast',  # Requires host references to not be externalized i31refs
+    'ref_test.wast',  # Requires host references to not be externalized i31refs
+    'struct.wast',    # Fails to roundtrip unnamed types e.g. `(ref 0)`
+    'memory64.wast',        # Requires validations on the max memory size
+    'imports3.wast',  # Requires better checking of exports from the special "spectest" module
+    'relaxed_dot_product.wast',   # i16x8.relaxed_dot_i8x16_i7x16_s instruction not supported
+    'relaxed_laneselect.wast',    # i8x16.relaxed_laneselect instruction not supported
+    'simd_const.wast',            # Hex float constant not recognized as out of range
+    'token.wast',                 # Lexer should require spaces between strings and non-paren tokens
+]
+
+
+def _can_run_spec_test(test):
+    test = Path(test)
+    if 'testsuite' not in test.parts:
+        return not any(test.match(f"test/spec/{test_to_skip}") for test_to_skip in SPEC_TESTS_TO_SKIP)
+
+    if any(proposal in test.parts for proposal in SPEC_TESTSUITE_PROPOSALS_TO_SKIP):
+        return False
+
+    return not any(Path(test).match(f"test/spec/testsuite/{test_to_skip}") for test_to_skip in SPEC_TESTSUITE_TESTS_TO_SKIP)
+
+
+options.spec_tests = [t for t in options.spec_tests if _can_run_spec_test(t)]
 
 
 # check utilities
 
+
 def binary_format_check(wast, verify_final_result=True, wasm_as_args=['-g'],
-                        binary_suffix='.fromBinary', original_wast=None):
+                        binary_suffix='.fromBinary', base_name=None, stdout=None):
     # checks we can convert the wast to binary and back
 
-    print('         (binary format check)')
-    cmd = WASM_AS + [wast, '-o', 'a.wasm', '-all'] + wasm_as_args
-    print('            ', ' '.join(cmd))
-    if os.path.exists('a.wasm'):
-        os.unlink('a.wasm')
-    subprocess.check_call(cmd, stdout=subprocess.PIPE)
-    assert os.path.exists('a.wasm')
+    as_file = f"{base_name}-a.wasm" if base_name is not None else "a.wasm"
+    disassembled_file = f"{base_name}-ab.wast" if base_name is not None else "ab.wast"
 
-    cmd = WASM_DIS + ['a.wasm', '-o', 'ab.wast', '-all']
-    print('            ', ' '.join(cmd))
-    if os.path.exists('ab.wast'):
-        os.unlink('ab.wast')
+    print('         (binary format check)', file=stdout)
+    cmd = WASM_AS + [wast, '-o', as_file, '-all'] + wasm_as_args
+    print('            ', ' '.join(cmd), file=stdout)
+    if os.path.exists(as_file):
+        os.unlink(as_file)
     subprocess.check_call(cmd, stdout=subprocess.PIPE)
-    assert os.path.exists('ab.wast')
+    assert os.path.exists(as_file)
+
+    cmd = WASM_DIS + [as_file, '-o', disassembled_file, '-all']
+    print('            ', ' '.join(cmd), file=stdout)
+    if os.path.exists(disassembled_file):
+        os.unlink(disassembled_file)
+    subprocess.check_call(cmd, stdout=subprocess.PIPE)
+    assert os.path.exists(disassembled_file)
 
     # make sure it is a valid wast
-    cmd = WASM_OPT + ['ab.wast', '-all', '-q']
-    print('            ', ' '.join(cmd))
+    cmd = WASM_OPT + [disassembled_file, '-all', '-q']
+    print('            ', ' '.join(cmd), file=stdout)
     subprocess.check_call(cmd, stdout=subprocess.PIPE)
 
     if verify_final_result:
-        actual = open('ab.wast').read()
+        actual = open(disassembled_file).read()
         fail_if_not_identical_to_file(actual, wast + binary_suffix)
 
-    return 'ab.wast'
+    return disassembled_file
 
 
-def minify_check(wast, verify_final_result=True):
-    # checks we can parse minified output
-
-    print('     (minify check)')
-    cmd = WASM_OPT + [wast, '--print-minified', '-all']
-    print('      ', ' '.join(cmd))
-    subprocess.check_call(cmd, stdout=open('a.wast', 'w'), stderr=subprocess.PIPE)
-    subprocess.check_call(WASM_OPT + ['a.wast', '-all'],
-                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-
-# run a check with BINARYEN_PASS_DEBUG set, to do full validation
-def with_pass_debug(check):
+@contextmanager
+def with_pass_debug():
     old_pass_debug = os.environ.get('BINARYEN_PASS_DEBUG')
+    os.environ['BINARYEN_PASS_DEBUG'] = '1'
     try:
-        os.environ['BINARYEN_PASS_DEBUG'] = '1'
-        check()
+        yield
     finally:
         if old_pass_debug is not None:
             os.environ['BINARYEN_PASS_DEBUG'] = old_pass_debug
-        else:
-            if 'BINARYEN_PASS_DEBUG' in os.environ:
-                del os.environ['BINARYEN_PASS_DEBUG']
+        elif 'BINARYEN_PASS_DEBUG' in os.environ:
+            del os.environ['BINARYEN_PASS_DEBUG']
 
 
 # checks if we are on windows, and if so logs out that a test is being skipped,
@@ -521,6 +513,22 @@ def with_pass_debug(check):
 # windows, so that we can easily find which tests are skipped.
 def skip_if_on_windows(name):
     if get_platform() == 'windows':
-        print('skipping test "%s" on windows' % name)
+        print(f'skipping test "{name}" on windows')
         return True
     return False
+
+
+test_suffixes = ['*.wasm', '*.wast', '*.wat']
+
+
+# return a list of all the tests in the entire test suite
+def get_all_tests():
+    core_tests = get_tests(get_test_dir('.'), test_suffixes)
+    passes_tests = get_tests(get_test_dir('passes'), test_suffixes)
+    spec_tests = get_tests(get_test_dir('spec'), test_suffixes)
+    wasm2js_tests = get_tests(get_test_dir('wasm2js'), test_suffixes)
+    lld_tests = get_tests(get_test_dir('lld'), test_suffixes)
+    unit_tests = get_tests(get_test_dir(os.path.join('unit', 'input')), test_suffixes)
+    lit_tests = get_tests(get_test_dir('lit'), test_suffixes, recursive=True)
+
+    return core_tests + passes_tests + spec_tests + wasm2js_tests + lld_tests + unit_tests + lit_tests

@@ -2,7 +2,7 @@
 ;; RUN: wasm-opt %s -all --dae -S -o - | filecheck %s
 
 (module
- ;; CHECK:      (type $"{}" (sub (struct )))
+ ;; CHECK:      (type $"{}" (sub (struct)))
  (type $"{}" (sub (struct)))
 
  ;; CHECK:      (type $"{i32}" (sub $"{}" (struct (field i32))))
@@ -19,7 +19,7 @@
 
  (type $"{i32_f32}" (sub $"{i32}" (struct (field i32) (field f32))))
 
- ;; CHECK:      (func $call-various-params-no (type $0)
+ ;; CHECK:      (func $call-various-params-no (type $2)
  ;; CHECK-NEXT:  (call $various-params-no
  ;; CHECK-NEXT:   (call $"get_{}")
  ;; CHECK-NEXT:   (call $"get_{i32}")
@@ -45,7 +45,7 @@
  )
  ;; This function is called in ways that do not allow us to alter the types of
  ;; its parameters (see last function).
- ;; CHECK:      (func $various-params-no (type $7) (param $x (ref null $"{}")) (param $y (ref null $"{}"))
+ ;; CHECK:      (func $various-params-no (type $8) (param $x (ref null $"{}")) (param $y (ref null $"{}"))
  ;; CHECK-NEXT:  (drop
  ;; CHECK-NEXT:   (local.get $x)
  ;; CHECK-NEXT:  )
@@ -59,7 +59,7 @@
   (drop (local.get $y))
  )
 
- ;; CHECK:      (func $"get_{}" (type $8) (result (ref null $"{}"))
+ ;; CHECK:      (func $"get_{}" (type $9) (result (ref null $"{}"))
  ;; CHECK-NEXT:  (unreachable)
  ;; CHECK-NEXT: )
  (func $"get_{}" (result (ref null $"{}"))
@@ -78,7 +78,7 @@
   (unreachable)
  )
 
- ;; CHECK:      (func $call-various-params-yes (type $0)
+ ;; CHECK:      (func $call-various-params-yes (type $2)
  ;; CHECK-NEXT:  (call $various-params-yes
  ;; CHECK-NEXT:   (call $"get_null_{i32}")
  ;; CHECK-NEXT:   (i32.const 0)
@@ -125,7 +125,7 @@
   (drop (local.get $y))
  )
 
- ;; CHECK:      (func $call-various-params-set (type $0)
+ ;; CHECK:      (func $call-various-params-set (type $2)
  ;; CHECK-NEXT:  (call $various-params-set
  ;; CHECK-NEXT:   (call $"get_null_{i32}")
  ;; CHECK-NEXT:   (call $"get_null_{i32}")
@@ -196,7 +196,7 @@
   )
  )
 
- ;; CHECK:      (func $call-various-params-tee (type $0)
+ ;; CHECK:      (func $call-various-params-tee (type $2)
  ;; CHECK-NEXT:  (call $various-params-tee
  ;; CHECK-NEXT:   (call $"get_null_{i32}")
  ;; CHECK-NEXT:  )
@@ -232,7 +232,7 @@
   )
  )
 
- ;; CHECK:      (func $call-various-params-null (type $0)
+ ;; CHECK:      (func $call-various-params-null (type $2)
  ;; CHECK-NEXT:  (call $various-params-null
  ;; CHECK-NEXT:   (ref.as_non_null
  ;; CHECK-NEXT:    (ref.null none)
@@ -286,7 +286,7 @@
   (local.set $temp (local.get $temp))
  )
 
- ;; CHECK:      (func $call-various-params-middle (type $0)
+ ;; CHECK:      (func $call-various-params-middle (type $2)
  ;; CHECK-NEXT:  (call $various-params-middle
  ;; CHECK-NEXT:   (call $"get_null_{i32_i64}")
  ;; CHECK-NEXT:  )
@@ -314,9 +314,8 @@
   (drop (local.get $x))
  )
 
- ;; CHECK:      (func $unused-and-refinable (type $0)
+ ;; CHECK:      (func $unused-and-refinable (type $2)
  ;; CHECK-NEXT:  (local $0 structref)
- ;; CHECK-NEXT:  (nop)
  ;; CHECK-NEXT: )
  (func $unused-and-refinable (param $0 structref)
   ;; This function does not use $0. It is called with $"{}", so it is also
@@ -330,7 +329,7 @@
   ;; local).
  )
 
- ;; CHECK:      (func $call-unused-and-refinable (type $0)
+ ;; CHECK:      (func $call-unused-and-refinable (type $2)
  ;; CHECK-NEXT:  (call $unused-and-refinable)
  ;; CHECK-NEXT: )
  (func $call-unused-and-refinable
@@ -339,7 +338,7 @@
   )
  )
 
- ;; CHECK:      (func $non-nullable-fixup (type $14) (param $0 (ref $"{}"))
+ ;; CHECK:      (func $non-nullable-fixup (type $14) (param $0 (ref (exact $"{}")))
  ;; CHECK-NEXT:  (local $1 structref)
  ;; CHECK-NEXT:  (local.set $1
  ;; CHECK-NEXT:   (local.get $0)
@@ -357,7 +356,7 @@
   )
  )
 
- ;; CHECK:      (func $call-non-nullable-fixup (type $0)
+ ;; CHECK:      (func $call-non-nullable-fixup (type $2)
  ;; CHECK-NEXT:  (call $non-nullable-fixup
  ;; CHECK-NEXT:   (struct.new_default $"{}")
  ;; CHECK-NEXT:  )
@@ -368,7 +367,7 @@
   )
  )
 
- ;; CHECK:      (func $call-update-null (type $0)
+ ;; CHECK:      (func $call-update-null (type $2)
  ;; CHECK-NEXT:  (call $update-null
  ;; CHECK-NEXT:   (ref.null none)
  ;; CHECK-NEXT:  )
@@ -387,7 +386,7 @@
   )
  )
 
- ;; CHECK:      (func $update-null (type $15) (param $x (ref null $"{}"))
+ ;; CHECK:      (func $update-null (type $15) (param $x (ref null (exact $"{}")))
  ;; CHECK-NEXT:  (drop
  ;; CHECK-NEXT:   (local.get $x)
  ;; CHECK-NEXT:  )
@@ -402,22 +401,32 @@
  ;; CHECK:      (func $"get_null_{i32}" (type $5) (result (ref null $"{i32}"))
  ;; CHECK-NEXT:  (select (result (ref null $"{i32}"))
  ;; CHECK-NEXT:   (ref.null none)
- ;; CHECK-NEXT:   (struct.new_default $"{i32}")
+ ;; CHECK-NEXT:   (select (result (ref $"{i32}"))
+ ;; CHECK-NEXT:    (struct.new_default $"{i32}")
+ ;; CHECK-NEXT:    (struct.new_default $"{i32_i64}")
+ ;; CHECK-NEXT:    (i32.const 0)
+ ;; CHECK-NEXT:   )
  ;; CHECK-NEXT:   (i32.const 0)
  ;; CHECK-NEXT:  )
  ;; CHECK-NEXT: )
  (func $"get_null_{i32}" (result (ref null $"{i32}"))
-  ;; Helper function that returns a null value of $"{i32}." We use this instead of
-  ;; a direct ref.null because those can be rewritten by LUBFinder.
-  (select
+  ;; Helper function that returns a null value of $"{i32}." We use this instead
+  ;; of a direct ref.null because those can be rewritten by LUBFinder. Use two
+  ;; selects to create a return type that cannot be improved to be non-null, a
+  ;; subtype, or exact.
+  (select (result (ref null $"{i32}"))
    (ref.null none)
-   (struct.new_default $"{i32}")
+   (select (result (ref $"{i32}"))
+     (struct.new_default $"{i32}")
+     (struct.new_default $"{i32_i64}")
+     (i32.const 0)
+   )
    (i32.const 0)
   )
  )
 
- ;; CHECK:      (func $"get_null_{i32_i64}" (type $16) (result (ref null $"{i32_i64}"))
- ;; CHECK-NEXT:  (select (result (ref null $"{i32_i64}"))
+ ;; CHECK:      (func $"get_null_{i32_i64}" (type $16) (result (ref null (exact $"{i32_i64}")))
+ ;; CHECK-NEXT:  (select (result (ref null (exact $"{i32_i64}")))
  ;; CHECK-NEXT:   (ref.null none)
  ;; CHECK-NEXT:   (struct.new_default $"{i32_i64}")
  ;; CHECK-NEXT:   (i32.const 0)
@@ -431,8 +440,8 @@
   )
  )
 
- ;; CHECK:      (func $"get_null_{i32_f32}" (type $17) (result (ref null $"{i32_f32}"))
- ;; CHECK-NEXT:  (select (result (ref null $"{i32_f32}"))
+ ;; CHECK:      (func $"get_null_{i32_f32}" (type $17) (result (ref null (exact $"{i32_f32}")))
+ ;; CHECK-NEXT:  (select (result (ref null (exact $"{i32_f32}")))
  ;; CHECK-NEXT:   (ref.null none)
  ;; CHECK-NEXT:   (struct.new_default $"{i32_f32}")
  ;; CHECK-NEXT:   (i32.const 0)

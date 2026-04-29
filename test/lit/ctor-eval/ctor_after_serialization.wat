@@ -7,7 +7,7 @@
 ;; contains the serialization of the struct.new instruction).
 
 (module
- ;; CHECK:      (type $A (struct ))
+ ;; CHECK:      (type $A (struct))
  (type $A (struct))
 
  (export "new" (func $new))
@@ -26,7 +26,7 @@
 
 ;; CHECK:      (type $2 (func))
 
-;; CHECK:      (global $ctor-eval$global (ref $A) (struct.new_default $A))
+;; CHECK:      (global $ctor-eval$global (ref (exact $A)) (struct.new_default $A))
 
 ;; CHECK:      (export "new" (func $new_2))
 
@@ -43,14 +43,9 @@
  ;; As above, but now there is an existing global with the name that we want to
  ;; use. We should not collide.
 
- ;; CHECK:      (type $A (struct ))
+ ;; CHECK:      (type $A (struct))
  (type $A (struct))
 
- ;; CHECK:      (type $1 (func (result (ref any))))
-
- ;; CHECK:      (type $2 (func (result anyref)))
-
- ;; CHECK:      (global $ctor-eval$global (ref $A) (struct.new_default $A))
  (global $ctor-eval$global (ref $A)
   (struct.new_default $A)
  )
@@ -67,16 +62,22 @@
   (global.get $ctor-eval$global)
  )
 )
-;; CHECK:      (global $ctor-eval$global_1 (ref $A) (struct.new_default $A))
+;; CHECK:      (type $1 (func (result (ref any))))
+
+;; CHECK:      (type $2 (func (result anyref)))
+
+;; CHECK:      (global $ctor-eval$global_3 (ref (exact $A)) (struct.new_default $A))
+
+;; CHECK:      (global $ctor-eval$global_2 (ref (exact $A)) (struct.new_default $A))
 
 ;; CHECK:      (export "new" (func $new_2))
 
 ;; CHECK:      (export "nop" (func $nop_3))
 
 ;; CHECK:      (func $new_2 (type $1) (result (ref any))
-;; CHECK-NEXT:  (global.get $ctor-eval$global_1)
+;; CHECK-NEXT:  (global.get $ctor-eval$global_2)
 ;; CHECK-NEXT: )
 
 ;; CHECK:      (func $nop_3 (type $2) (result anyref)
-;; CHECK-NEXT:  (global.get $ctor-eval$global)
+;; CHECK-NEXT:  (global.get $ctor-eval$global_3)
 ;; CHECK-NEXT: )

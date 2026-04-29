@@ -136,7 +136,7 @@
   ;; CHECK:      (rec
   ;; CHECK-NEXT:  (type $0 (func))
 
-  ;; CHECK:       (type $sig (sub (func (param i32 i64 f32))))
+  ;; CHECK:       (type $sig (sub (func (param i64 f32))))
   (type $sig (sub (func (param i32) (param i64) (param f32) (param f64))))
 
   (memory 1 1)
@@ -145,19 +145,20 @@
 
   ;; CHECK:      (elem declare func $foo)
 
-  ;; CHECK:      (func $foo (type $sig) (param $0 i32) (param $1 i64) (param $2 f32)
-  ;; CHECK-NEXT:  (local $3 f64)
+  ;; CHECK:      (func $foo (type $sig) (param $0 i64) (param $1 f32)
+  ;; CHECK-NEXT:  (local $2 f64)
+  ;; CHECK-NEXT:  (local $3 i32)
   ;; CHECK-NEXT:  (i64.store
   ;; CHECK-NEXT:   (i32.const 0)
-  ;; CHECK-NEXT:   (local.get $1)
+  ;; CHECK-NEXT:   (local.get $0)
   ;; CHECK-NEXT:  )
   ;; CHECK-NEXT:  (f32.store
   ;; CHECK-NEXT:   (i32.const 0)
-  ;; CHECK-NEXT:   (local.get $2)
+  ;; CHECK-NEXT:   (local.get $1)
   ;; CHECK-NEXT:  )
   ;; CHECK-NEXT: )
   (func $foo (type $sig) (param $i32 i32) (param $i64 i64) (param $f32 f32) (param $f64 f64)
-    ;; Use the middle two parameters.
+    ;; Use the middle two parameters. The other two vanish.
     (i64.store
       (i32.const 0)
       (local.get $i64)
@@ -169,25 +170,29 @@
   )
 
   ;; CHECK:      (func $caller (type $0)
-  ;; CHECK-NEXT:  (call $foo
-  ;; CHECK-NEXT:   (block (result i32)
-  ;; CHECK-NEXT:    (call $caller)
-  ;; CHECK-NEXT:    (i32.const 0)
+  ;; CHECK-NEXT:  (local $0 i32)
+  ;; CHECK-NEXT:  (block
+  ;; CHECK-NEXT:   (local.set $0
+  ;; CHECK-NEXT:    (block (result i32)
+  ;; CHECK-NEXT:     (call $caller)
+  ;; CHECK-NEXT:     (i32.const 0)
+  ;; CHECK-NEXT:    )
   ;; CHECK-NEXT:   )
-  ;; CHECK-NEXT:   (i64.const 1)
-  ;; CHECK-NEXT:   (f32.const 2)
+  ;; CHECK-NEXT:   (call $foo
+  ;; CHECK-NEXT:    (i64.const 1)
+  ;; CHECK-NEXT:    (f32.const 2)
+  ;; CHECK-NEXT:   )
   ;; CHECK-NEXT:  )
   ;; CHECK-NEXT:  (call_ref $sig
-  ;; CHECK-NEXT:   (i32.const 4)
   ;; CHECK-NEXT:   (i64.const 5)
   ;; CHECK-NEXT:   (f32.const 6)
   ;; CHECK-NEXT:   (ref.func $foo)
   ;; CHECK-NEXT:  )
   ;; CHECK-NEXT: )
   (func $caller
-    ;; As above, but now one of the unused parameters has a side effect which
-    ;; prevents us from removing it (flattening the IR first would avoid this
-    ;; limitation). We only end up removing a single unused param, the last.
+    ;; As above, but now one of the unused parameters has a side effect. We
+    ;; move it to a local, which allows us to remove it (and also the last,
+    ;; which is trivial).
     (call $foo
       (block (result i32)
         (call $caller)
@@ -207,13 +212,13 @@
   )
 )
 
-;; As above, but with the effects on a call_ref. Once more, we can only optimize
-;; away the very last param.
+;; As above, but with the effects on a call_ref. Once more, we can optimize
+;; even with effects on a param, using locals.
 (module
   ;; CHECK:      (rec
   ;; CHECK-NEXT:  (type $0 (func))
 
-  ;; CHECK:       (type $sig (sub (func (param i32 i64 f32))))
+  ;; CHECK:       (type $sig (sub (func (param i64 f32))))
   (type $sig (sub (func (param i32) (param i64) (param f32) (param f64))))
 
   (memory 1 1)
@@ -222,15 +227,16 @@
 
   ;; CHECK:      (elem declare func $foo)
 
-  ;; CHECK:      (func $foo (type $sig) (param $0 i32) (param $1 i64) (param $2 f32)
-  ;; CHECK-NEXT:  (local $3 f64)
+  ;; CHECK:      (func $foo (type $sig) (param $0 i64) (param $1 f32)
+  ;; CHECK-NEXT:  (local $2 f64)
+  ;; CHECK-NEXT:  (local $3 i32)
   ;; CHECK-NEXT:  (i64.store
   ;; CHECK-NEXT:   (i32.const 0)
-  ;; CHECK-NEXT:   (local.get $1)
+  ;; CHECK-NEXT:   (local.get $0)
   ;; CHECK-NEXT:  )
   ;; CHECK-NEXT:  (f32.store
   ;; CHECK-NEXT:   (i32.const 0)
-  ;; CHECK-NEXT:   (local.get $2)
+  ;; CHECK-NEXT:   (local.get $1)
   ;; CHECK-NEXT:  )
   ;; CHECK-NEXT: )
   (func $foo (type $sig) (param $i32 i32) (param $i64 i64) (param $f32 f32) (param $f64 f64)
@@ -245,19 +251,23 @@
   )
 
   ;; CHECK:      (func $caller (type $0)
+  ;; CHECK-NEXT:  (local $0 i32)
   ;; CHECK-NEXT:  (call $foo
-  ;; CHECK-NEXT:   (i32.const 0)
   ;; CHECK-NEXT:   (i64.const 1)
   ;; CHECK-NEXT:   (f32.const 2)
   ;; CHECK-NEXT:  )
-  ;; CHECK-NEXT:  (call_ref $sig
-  ;; CHECK-NEXT:   (block (result i32)
-  ;; CHECK-NEXT:    (call $caller)
-  ;; CHECK-NEXT:    (i32.const 4)
+  ;; CHECK-NEXT:  (block
+  ;; CHECK-NEXT:   (local.set $0
+  ;; CHECK-NEXT:    (block (result i32)
+  ;; CHECK-NEXT:     (call $caller)
+  ;; CHECK-NEXT:     (i32.const 4)
+  ;; CHECK-NEXT:    )
   ;; CHECK-NEXT:   )
-  ;; CHECK-NEXT:   (i64.const 5)
-  ;; CHECK-NEXT:   (f32.const 6)
-  ;; CHECK-NEXT:   (ref.func $foo)
+  ;; CHECK-NEXT:   (call_ref $sig
+  ;; CHECK-NEXT:    (i64.const 5)
+  ;; CHECK-NEXT:    (f32.const 6)
+  ;; CHECK-NEXT:    (ref.func $foo)
+  ;; CHECK-NEXT:   )
   ;; CHECK-NEXT:  )
   ;; CHECK-NEXT: )
   (func $caller
@@ -298,7 +308,6 @@
   ;; CHECK-NEXT:  (local $1 f32)
   ;; CHECK-NEXT:  (local $2 i64)
   ;; CHECK-NEXT:  (local $3 i32)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   (func $foo (type $sig) (param $i32 i32) (param $i64 i64) (param $f32 f32) (param $f64 f64)
     ;; Use nothing at all: all params can be removed.
@@ -384,7 +393,6 @@
 
   ;; CHECK:      (func $foo (type $sig)
   ;; CHECK-NEXT:  (local $0 i32)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   (func $foo (type $sig) (param $i32 i32)
     ;; This function does not use the parameter. It also has no calls, but that
@@ -406,7 +414,6 @@
   ;; CHECK:      (memory $0 1 1)
 
   ;; CHECK:      (func $foo (type $sig) (param $i32 i32)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   (func $foo (type $sig) (param $i32 i32)
   )
@@ -421,7 +428,6 @@
   ;; CHECK:      (memory $0 1 1)
 
   ;; CHECK:      (func $foo (type $sig) (param $i32 i32)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   (func $foo (type $sig) (param $i32 i32)
   )
@@ -459,7 +465,6 @@
 
   ;; CHECK:      (func $foo (type $sig)
   ;; CHECK-NEXT:  (local $0 i32)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   (func $foo (type $sig) (param $i32 i32)
   )
@@ -495,14 +500,12 @@
 
   ;; CHECK:      (func $foo (type $sig)
   ;; CHECK-NEXT:  (local $0 i32)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   (func $foo (type $sig) (param $i32 i32)
   )
 
   ;; CHECK:      (func $bar (type $sig)
   ;; CHECK-NEXT:  (local $0 i32)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   (func $bar (type $sig) (param $i32 i32)
     ;; As above, but the second function also does not use the parameter, and
@@ -564,7 +567,6 @@
   ;; CHECK:      (table $0 1 1 anyref)
 
   ;; CHECK:      (func $foo (type $sig) (param $i32 i32)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   (func $foo (type $sig) (param $i32 i32)
   )
@@ -583,13 +585,11 @@
   ;; CHECK:      (export "bar" (func $bar))
 
   ;; CHECK:      (func $foo (type $sig) (param $i32 i32)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   (func $foo (export "foo") (type $sig) (param $i32 i32)
   )
 
   ;; CHECK:      (func $bar (type $sig) (param $i32 i32)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   (func $bar (export "bar") (type $sig) (param $i32 i32)
   )
@@ -608,8 +608,7 @@
 
 ;; Two functions with two different types have an unused parameter. After
 ;; removing the parameter from each, they both have no parameters. They should
-;; *not* have the same type, however: the type should be different nominally
-;; even though after the pruning they are identical structurally.
+;; *not* have the same type, however, even though they have the same signature.
 (module
   (rec
     ;; CHECK:      (rec
@@ -622,14 +621,12 @@
 
   ;; CHECK:      (func $foo1 (type $sig1)
   ;; CHECK-NEXT:  (local $0 i32)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   (func $foo1 (type $sig1) (param $i32 i32)
   )
 
   ;; CHECK:      (func $foo2 (type $sig2)
   ;; CHECK-NEXT:  (local $0 f64)
-  ;; CHECK-NEXT:  (nop)
   ;; CHECK-NEXT: )
   (func $foo2 (type $sig2) (param $f64 f64)
   )
@@ -819,7 +816,7 @@
 
   ;; CHECK:      (func $0 (type $0)
   ;; CHECK-NEXT:  (local $0 f32)
-  ;; CHECK-NEXT:  (block ;; (replaces something unreachable we can't emit)
+  ;; CHECK-NEXT:  (block ;; (replaces unreachable RefCast we can't emit)
   ;; CHECK-NEXT:   (drop
   ;; CHECK-NEXT:    (unreachable)
   ;; CHECK-NEXT:   )
@@ -910,5 +907,446 @@
   ;; CHECK-NEXT: )
   (func $func.B (type $func.B) (param $0 (ref $array.A)) (result (ref $array.B))
     (unreachable)
+  )
+)
+
+;; Test corner cases with var updating. To remove the parameter of $func we
+;; must move the parameter to a local first. We must then adjust local types
+;; properly while adjusting the signature (when the signature loses a parameter,
+;; local indexes change, which is a delicate dance handled by
+;; GlobalTypeRewriter::updateSignatures and ParamUtils::removeParameters;
+;; moving the parameter to a local first should not get in the way there).
+(module
+  ;; CHECK:      (rec
+  ;; CHECK-NEXT:  (type $struct (sub (struct (field v128))))
+  (type $struct (sub (struct (field v128))))
+  ;; CHECK:       (type $1 (func))
+
+  ;; CHECK:       (type $func (func))
+  (type $func (func (param v128)))
+
+  ;; CHECK:      (elem declare func $func)
+
+  ;; CHECK:      (func $func (type $func)
+  ;; CHECK-NEXT:  (local $0 v128)
+  ;; CHECK-NEXT:  (nop)
+  ;; CHECK-NEXT: )
+  (func $func (type $func) (param $0 v128)
+    ;; The parameter will be removed.
+    (nop)
+  )
+
+  ;; CHECK:      (func $caller (type $1)
+  ;; CHECK-NEXT:  (local $0 (ref $struct))
+  ;; CHECK-NEXT:  (local $1 externref)
+  ;; CHECK-NEXT:  (local $2 v128)
+  ;; CHECK-NEXT:  (local.set $2
+  ;; CHECK-NEXT:   (struct.get $struct 0
+  ;; CHECK-NEXT:    (local.tee $0
+  ;; CHECK-NEXT:     (struct.new_default $struct)
+  ;; CHECK-NEXT:    )
+  ;; CHECK-NEXT:   )
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT:  (call_ref $func
+  ;; CHECK-NEXT:   (ref.func $func)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+  (func $caller (param $param externref)
+    (local $var (ref $struct))
+    ;; The parameter of this call_ref will be removed.
+    (call_ref $func
+      ;; Use a struct.get, which would error if the type the nested tee were
+      ;; incorrect (it asserts on it being a struct type).
+      (struct.get $struct 0
+        ;; Use a tee to test the updating of tee'd vars, as mentioned above.
+        (local.tee $var
+          (struct.new_default $struct)
+        )
+      )
+      (ref.func $func)
+    )
+  )
+)
+
+(module
+  ;; CHECK:      (rec
+  ;; CHECK-NEXT:  (type $0 (func (param i32)))
+
+  ;; CHECK:       (type $1 (func (result i32)))
+
+  ;; CHECK:       (type $2 (func (param i32)))
+
+  ;; CHECK:      (tag $tag (type $2) (param i32))
+  (tag $tag (param i32))
+
+  ;; CHECK:      (func $catch-pop (type $1) (result i32)
+  ;; CHECK-NEXT:  (local $0 i32)
+  ;; CHECK-NEXT:  (local $1 i32)
+  ;; CHECK-NEXT:  (local $2 i32)
+  ;; CHECK-NEXT:  (block $block (result i32)
+  ;; CHECK-NEXT:   (try $try
+  ;; CHECK-NEXT:    (do
+  ;; CHECK-NEXT:     (nop)
+  ;; CHECK-NEXT:    )
+  ;; CHECK-NEXT:    (catch $tag
+  ;; CHECK-NEXT:     (local.set $2
+  ;; CHECK-NEXT:      (pop i32)
+  ;; CHECK-NEXT:     )
+  ;; CHECK-NEXT:     (block
+  ;; CHECK-NEXT:      (block
+  ;; CHECK-NEXT:       (local.set $0
+  ;; CHECK-NEXT:        (local.get $2)
+  ;; CHECK-NEXT:       )
+  ;; CHECK-NEXT:       (local.set $1
+  ;; CHECK-NEXT:        (br_if $block
+  ;; CHECK-NEXT:         (i32.const 1)
+  ;; CHECK-NEXT:         (i32.const 2)
+  ;; CHECK-NEXT:        )
+  ;; CHECK-NEXT:       )
+  ;; CHECK-NEXT:       (call $target
+  ;; CHECK-NEXT:        (local.get $0)
+  ;; CHECK-NEXT:       )
+  ;; CHECK-NEXT:      )
+  ;; CHECK-NEXT:      (nop)
+  ;; CHECK-NEXT:     )
+  ;; CHECK-NEXT:    )
+  ;; CHECK-NEXT:   )
+  ;; CHECK-NEXT:   (i32.const 3)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+  (func $catch-pop (result i32)
+    (block $block (result i32)
+      (try $try
+        (do
+          (nop)
+        )
+        (catch $tag
+          (call $target
+            (pop i32)
+            ;; We can remove this parameter by moving it to a local first, which
+            ;; also moves the pop, which then needs to be fixed up.
+            (br_if $block
+              (i32.const 1)
+              (i32.const 2)
+            )
+          )
+          ;; This nop causes the call to be in a block. When we add another
+          ;; block to hold the code that we move, we'd get an error if we don't
+          ;; apply fixups.
+          (nop)
+        )
+      )
+      (i32.const 3)
+    )
+  )
+
+  ;; CHECK:      (func $target (type $0) (param $0 i32)
+  ;; CHECK-NEXT:  (local $1 i32)
+  ;; CHECK-NEXT:  (drop
+  ;; CHECK-NEXT:   (local.get $0)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+  (func $target (param $x i32) (param $y i32)
+    ;; Use only the first param. The second will be removed.
+    (drop
+      (local.get $x)
+    )
+  )
+)
+
+;; As above, but remove the other parameter (the pop).
+(module
+  ;; CHECK:      (rec
+  ;; CHECK-NEXT:  (type $0 (func (param i32)))
+
+  ;; CHECK:       (type $1 (func (result i32)))
+
+  ;; CHECK:       (type $2 (func (param i32)))
+
+  ;; CHECK:      (tag $tag (type $2) (param i32))
+  (tag $tag (param i32))
+
+  ;; CHECK:      (func $catch-pop (type $1) (result i32)
+  ;; CHECK-NEXT:  (local $0 i32)
+  ;; CHECK-NEXT:  (local $1 i32)
+  ;; CHECK-NEXT:  (local $2 i32)
+  ;; CHECK-NEXT:  (block $block (result i32)
+  ;; CHECK-NEXT:   (try $try
+  ;; CHECK-NEXT:    (do
+  ;; CHECK-NEXT:     (nop)
+  ;; CHECK-NEXT:    )
+  ;; CHECK-NEXT:    (catch $tag
+  ;; CHECK-NEXT:     (local.set $2
+  ;; CHECK-NEXT:      (pop i32)
+  ;; CHECK-NEXT:     )
+  ;; CHECK-NEXT:     (block
+  ;; CHECK-NEXT:      (block
+  ;; CHECK-NEXT:       (local.set $0
+  ;; CHECK-NEXT:        (local.get $2)
+  ;; CHECK-NEXT:       )
+  ;; CHECK-NEXT:       (local.set $1
+  ;; CHECK-NEXT:        (br_if $block
+  ;; CHECK-NEXT:         (i32.const 1)
+  ;; CHECK-NEXT:         (i32.const 2)
+  ;; CHECK-NEXT:        )
+  ;; CHECK-NEXT:       )
+  ;; CHECK-NEXT:       (call $target
+  ;; CHECK-NEXT:        (local.get $1)
+  ;; CHECK-NEXT:       )
+  ;; CHECK-NEXT:      )
+  ;; CHECK-NEXT:      (nop)
+  ;; CHECK-NEXT:     )
+  ;; CHECK-NEXT:    )
+  ;; CHECK-NEXT:   )
+  ;; CHECK-NEXT:   (i32.const 3)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+  (func $catch-pop (result i32)
+    (block $block (result i32)
+      (try $try
+        (do
+          (nop)
+        )
+        (catch $tag
+          (call $target
+            (pop i32)
+            (br_if $block
+              (i32.const 1)
+              (i32.const 2)
+            )
+          )
+          (nop)
+        )
+      )
+      (i32.const 3)
+    )
+  )
+
+  ;; CHECK:      (func $target (type $0) (param $0 i32)
+  ;; CHECK-NEXT:  (local $1 i32)
+  ;; CHECK-NEXT:  (drop
+  ;; CHECK-NEXT:   (local.get $0)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+  (func $target (param $x i32) (param $y i32)
+    (drop
+      (local.get $y) ;; this changed from $x to $y
+    )
+  )
+)
+
+;; $exported is exported. The entire rec group becomes exported as well, which
+;; causes $unused-param's type to be public, which means we cannot normally
+;; modify it. However, in closed world we could allow such changes, by keeping
+;; the original public rec group as-is, and add a new rec group for private
+;; types, put the pruned type there, and use that pruned type on $unused-param.
+;; That can work here, but not in the testcase after us. For now, we also do not
+;; optimize here, as figuring out when it is safe is very difficult, and may
+;; need a new design TODO
+(module
+  (rec
+   ;; CHECK:      (rec
+   ;; CHECK-NEXT:  (type $none (func))
+   (type $none (func))
+   ;; CHECK:       (type $much (func (param i32)))
+   (type $much (func (param i32)))
+  )
+
+  ;; CHECK:      (type $2 (func))
+
+  ;; CHECK:      (export "exported" (func $exported))
+
+  ;; CHECK:      (func $exported (type $none)
+  ;; CHECK-NEXT: )
+  (func $exported (export "exported") (type $none)
+  )
+
+  ;; CHECK:      (func $unused-param (type $much) (param $param i32)
+  ;; CHECK-NEXT: )
+  (func $unused-param (type $much) (param $param i32)
+  )
+
+  ;; CHECK:      (func $caller (type $2)
+  ;; CHECK-NEXT:  (call $unused-param
+  ;; CHECK-NEXT:   (i32.const 0)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+  (func $caller
+    (call $unused-param
+      (i32.const 0)
+    )
+  )
+)
+
+;; As the previous testcase, but add another use of the type we want to prune,
+;; in a struct.new. The struct type is public, so we cannot modify it and
+;; replace the reference to the function type with the pruned version.
+(module
+  (rec
+    ;; CHECK:      (type $0 (func))
+
+    ;; CHECK:      (rec
+    ;; CHECK-NEXT:  (type $none (func))
+    (type $none (func))
+    ;; CHECK:       (type $much (func (param i32)))
+    (type $much (func (param i32)))
+
+    ;; CHECK:       (type $struct (struct (field (ref $much))))
+    (type $struct (struct (field (ref $much))))
+  )
+
+  ;; CHECK:      (elem declare func $unused-param)
+
+  ;; CHECK:      (export "exported" (func $exported))
+
+  ;; CHECK:      (func $exported (type $none)
+  ;; CHECK-NEXT: )
+  (func $exported (export "exported") (type $none)
+    ;; This makes the rec group public.
+  )
+
+  ;; CHECK:      (func $unused-param (type $much) (param $param i32)
+  ;; CHECK-NEXT: )
+  (func $unused-param (type $much) (param $param i32)
+  )
+
+  ;; CHECK:      (func $caller (type $0)
+  ;; CHECK-NEXT:  (call $unused-param
+  ;; CHECK-NEXT:   (i32.const 0)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+  (func $caller
+    (call $unused-param
+      (i32.const 0)
+    )
+  )
+
+  ;; CHECK:      (func $struct.new (type $0)
+  ;; CHECK-NEXT:  (drop
+  ;; CHECK-NEXT:   (struct.new $struct
+  ;; CHECK-NEXT:    (ref.func $unused-param)
+  ;; CHECK-NEXT:   )
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+  (func $struct.new
+    ;; This struct.new causes the problem mentioned above.
+    (drop
+      (struct.new $struct
+        (ref.func $unused-param)
+      )
+    )
+  )
+)
+
+;; Test that we do not prune parameters from types used in tags.
+(module
+  ;; CHECK:      (type $sig (func (param anyref)))
+  (type $sig (func (param anyref)))
+
+  ;; CHECK:      (type $1 (func))
+
+  ;; CHECK:      (tag $e (type $sig) (param anyref))
+  (tag $e (type $sig))
+
+  ;; CHECK:      (func $unused-param (type $sig) (param $0 anyref)
+  ;; CHECK-NEXT:  (nop)
+  ;; CHECK-NEXT: )
+  (func $unused-param (type $sig) (param anyref)
+    (nop)
+  )
+
+  ;; CHECK:      (func $throw (type $1)
+  ;; CHECK-NEXT:  (local $0 anyref)
+  ;; CHECK-NEXT:  (throw $e
+  ;; CHECK-NEXT:   (local.get $0)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+  (func $throw
+    (local anyref)
+    ;; This would be invalid if we optimized $sig.
+    (throw $e
+      (local.get 0)
+    )
+  )
+)
+
+(module
+  ;; If a signature is used in a continuation, we cannot refine its parameters,
+  ;; as we do not yet support updating continuation instructions with new types.
+  (rec
+    ;; CHECK:      (rec
+    ;; CHECK-NEXT:  (type $cont (cont $sig))
+
+    ;; CHECK:       (type $1 (func))
+
+    ;; CHECK:       (type $other (func))
+
+    ;; CHECK:       (type $sig (func (param anyref)))
+    (type $sig (func (param anyref)))
+    (type $other (func (param anyref)))
+    (type $cont (cont $sig))
+  )
+  ;; CHECK:      (elem declare func $cont $not-cont $other)
+
+  ;; CHECK:      (func $cont (type $sig) (param $0 anyref)
+  ;; CHECK-NEXT:  (nop)
+  ;; CHECK-NEXT: )
+  (func $cont (type $sig) (param anyref)
+    ;; The param is unused here, and in all functions below, so we want to
+    ;; remove it where possible.
+    (nop)
+  )
+
+  ;; CHECK:      (func $not-cont (type $sig) (param $0 anyref)
+  ;; CHECK-NEXT:  (nop)
+  ;; CHECK-NEXT: )
+  (func $not-cont (type $sig) (param anyref)
+    ;; This function cannot be optimized even though it is not used in a
+    ;; continuation. It is enough that it shares a type with a continuation
+    ;; function.
+    (nop)
+  )
+
+  ;; CHECK:      (func $other (type $other)
+  ;; CHECK-NEXT:  (local $0 anyref)
+  ;; CHECK-NEXT:  (local.set $0
+  ;; CHECK-NEXT:   (ref.null none)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT:  (nop)
+  ;; CHECK-NEXT: )
+  (func $other (type $other) (param anyref)
+    ;; This function uses a different type, so it can be optimized.
+    (nop)
+  )
+
+
+  ;; CHECK:      (func $test (type $1)
+  ;; CHECK-NEXT:  (drop
+  ;; CHECK-NEXT:   (cont.new $cont
+  ;; CHECK-NEXT:    (ref.func $cont)
+  ;; CHECK-NEXT:   )
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT:  (call_ref $sig
+  ;; CHECK-NEXT:   (ref.null none)
+  ;; CHECK-NEXT:   (ref.func $not-cont)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT:  (call_ref $other
+  ;; CHECK-NEXT:   (ref.func $other)
+  ;; CHECK-NEXT:  )
+  ;; CHECK-NEXT: )
+  (func $test
+    (drop
+      (cont.new $cont
+        (ref.func $cont)
+      )
+    )
+    (call_ref $sig
+      (ref.null none)
+      (ref.func $not-cont)
+    )
+    (call_ref $other
+      (ref.null none)
+      (ref.func $other)
+    )
   )
 )

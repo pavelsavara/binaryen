@@ -18,11 +18,9 @@
   ;; TNH:      (type $other (struct (field i64) (field f32)))
   (type $other  (struct (field i64) (field f32)))
 
-  ;; CHECK:      (func $foo (type $2)
-  ;; CHECK-NEXT:  (nop)
+  ;; CHECK:      (func $foo (type $3)
   ;; CHECK-NEXT: )
-  ;; TNH:      (func $foo (type $2)
-  ;; TNH-NEXT:  (nop)
+  ;; TNH:      (func $foo (type $3)
   ;; TNH-NEXT: )
   (func $foo)
 
@@ -39,12 +37,7 @@
   ;; CHECK-NEXT:   )
   ;; CHECK-NEXT:  )
   ;; CHECK-NEXT:  (drop
-  ;; CHECK-NEXT:   (block (result (ref none))
-  ;; CHECK-NEXT:    (drop
-  ;; CHECK-NEXT:     (local.get $child)
-  ;; CHECK-NEXT:    )
-  ;; CHECK-NEXT:    (unreachable)
-  ;; CHECK-NEXT:   )
+  ;; CHECK-NEXT:   (unreachable)
   ;; CHECK-NEXT:  )
   ;; CHECK-NEXT: )
   ;; TNH:      (func $ref-cast-iit (type $4) (param $parent (ref $parent)) (param $child (ref $child)) (param $other (ref $other))
@@ -60,12 +53,7 @@
   ;; TNH-NEXT:   )
   ;; TNH-NEXT:  )
   ;; TNH-NEXT:  (drop
-  ;; TNH-NEXT:   (block (result (ref none))
-  ;; TNH-NEXT:    (drop
-  ;; TNH-NEXT:     (local.get $child)
-  ;; TNH-NEXT:    )
-  ;; TNH-NEXT:    (unreachable)
-  ;; TNH-NEXT:   )
+  ;; TNH-NEXT:   (unreachable)
   ;; TNH-NEXT:  )
   ;; TNH-NEXT: )
   (func $ref-cast-iit
@@ -110,7 +98,7 @@
   ;; CHECK-NEXT:   )
   ;; CHECK-NEXT:  )
   ;; CHECK-NEXT:  (drop
-  ;; CHECK-NEXT:   (block ;; (replaces something unreachable we can't emit)
+  ;; CHECK-NEXT:   (block ;; (replaces unreachable RefCast we can't emit)
   ;; CHECK-NEXT:    (drop
   ;; CHECK-NEXT:     (unreachable)
   ;; CHECK-NEXT:    )
@@ -126,7 +114,7 @@
   ;; TNH-NEXT:   )
   ;; TNH-NEXT:  )
   ;; TNH-NEXT:  (drop
-  ;; TNH-NEXT:   (block ;; (replaces something unreachable we can't emit)
+  ;; TNH-NEXT:   (block ;; (replaces unreachable RefCast we can't emit)
   ;; TNH-NEXT:    (drop
   ;; TNH-NEXT:     (unreachable)
   ;; TNH-NEXT:    )
@@ -200,9 +188,9 @@
 (module
   (rec
     ;; CHECK:      (rec
-    ;; CHECK-NEXT:  (type $A (sub (struct )))
+    ;; CHECK-NEXT:  (type $A (sub (struct)))
     ;; TNH:      (rec
-    ;; TNH-NEXT:  (type $A (sub (struct )))
+    ;; TNH-NEXT:  (type $A (sub (struct)))
     (type $A (sub (struct )))
     ;; CHECK:       (type $B (sub $A (struct (field (ref null $A)))))
     ;; TNH:       (type $B (sub $A (struct (field (ref null $A)))))
@@ -210,8 +198,8 @@
     ;; CHECK:       (type $C (sub $B (struct (field (ref null $D)))))
     ;; TNH:       (type $C (sub $B (struct (field (ref null $D)))))
     (type $C (sub $B (struct (field (ref null $D)))))
-    ;; CHECK:       (type $D (sub $A (struct )))
-    ;; TNH:       (type $D (sub $A (struct )))
+    ;; CHECK:       (type $D (sub $A (struct)))
+    ;; TNH:       (type $D (sub $A (struct)))
     (type $D (sub $A (struct )))
   )
 

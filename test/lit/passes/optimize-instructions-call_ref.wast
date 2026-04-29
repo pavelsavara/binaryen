@@ -23,11 +23,11 @@
 
  ;; CHECK:      (table $table-1 10 (ref null $i32_i32_=>_none))
  (table $table-1 10 (ref null $i32_i32_=>_none))
- ;; CHECK:      (elem $elem-1 (table $table-1) (i32.const 0) (ref null $i32_i32_=>_none) (ref.func $foo))
+ ;; CHECK:      (elem $elem-1 (table $table-1) (i32.const 0) (ref null $i32_i32_=>_none) (item (ref.func $foo)))
  (elem $elem-1 (table $table-1) (i32.const 0) (ref null $i32_i32_=>_none)
   (ref.func $foo))
 
- ;; CHECK:      (elem declare func $bar $fallthrough-no-params $fallthrough-non-nullable $return-nothing)
+ ;; CHECK:      (elem declare func $bar $fallthrough-no-params $fallthrough-non-nullable)
 
  ;; CHECK:      (func $foo (type $i32_i32_=>_none) (param $0 i32) (param $1 i32)
  ;; CHECK-NEXT:  (unreachable)
@@ -44,13 +44,16 @@
  )
 
  ;; CHECK:      (func $call_ref-to-direct (type $i32_i32_=>_none) (param $x i32) (param $y i32)
+ ;; CHECK-NEXT:  ;;@ file.cpp:10:1
  ;; CHECK-NEXT:  (call $foo
  ;; CHECK-NEXT:   (local.get $x)
  ;; CHECK-NEXT:   (local.get $y)
  ;; CHECK-NEXT:  )
  ;; CHECK-NEXT: )
  (func $call_ref-to-direct (param $x i32) (param $y i32)
-  ;; This call_ref should become a direct call.
+  ;; This call_ref should become a direct call. The debuginfo should transfer as
+  ;; well.
+  ;;@ file.cpp:10:1
   (call_ref $i32_i32_=>_none
    (local.get $x)
    (local.get $y)
@@ -158,14 +161,9 @@
  )
 
  ;; CHECK:      (func $fallthrough-bad-type (type $none_=>_i32) (result i32)
- ;; CHECK-NEXT:  (block ;; (replaces something unreachable we can't emit)
+ ;; CHECK-NEXT:  (block ;; (replaces unreachable CallRef we can't emit)
  ;; CHECK-NEXT:   (drop
- ;; CHECK-NEXT:    (block (result (ref nofunc))
- ;; CHECK-NEXT:     (drop
- ;; CHECK-NEXT:      (ref.func $return-nothing)
- ;; CHECK-NEXT:     )
- ;; CHECK-NEXT:     (unreachable)
- ;; CHECK-NEXT:    )
+ ;; CHECK-NEXT:    (unreachable)
  ;; CHECK-NEXT:   )
  ;; CHECK-NEXT:   (unreachable)
  ;; CHECK-NEXT:  )
@@ -186,7 +184,6 @@
 
  ;; Helper function for the above test.
  ;; CHECK:      (func $return-nothing (type $none_=>_none)
- ;; CHECK-NEXT:  (nop)
  ;; CHECK-NEXT: )
  (func $return-nothing)
 
@@ -213,7 +210,13 @@
  )
 
  ;; CHECK:      (func $ignore-unreachable (type $none_=>_none)
- ;; CHECK-NEXT:  (block ;; (replaces something unreachable we can't emit)
+ ;; CHECK-NEXT:  (block ;; (replaces unreachable CallRef we can't emit)
+ ;; CHECK-NEXT:   (drop
+ ;; CHECK-NEXT:    (unreachable)
+ ;; CHECK-NEXT:   )
+ ;; CHECK-NEXT:   (drop
+ ;; CHECK-NEXT:    (unreachable)
+ ;; CHECK-NEXT:   )
  ;; CHECK-NEXT:   (drop
  ;; CHECK-NEXT:    (unreachable)
  ;; CHECK-NEXT:   )
@@ -247,29 +250,42 @@
  ;; CHECK:      (func $call_ref-to-select (type $5) (param $x i32) (param $y i32) (param $z i32) (param $f (ref $i32_i32_=>_none))
  ;; CHECK-NEXT:  (local $4 i32)
  ;; CHECK-NEXT:  (local $5 i32)
+ ;; CHECK-NEXT:  ;;@ file.cpp:20:2
  ;; CHECK-NEXT:  (block
+ ;; CHECK-NEXT:   ;;@
  ;; CHECK-NEXT:   (local.set $4
+ ;; CHECK-NEXT:    ;;@ file.cpp:20:2
  ;; CHECK-NEXT:    (local.get $x)
  ;; CHECK-NEXT:   )
+ ;; CHECK-NEXT:   ;;@
  ;; CHECK-NEXT:   (local.set $5
+ ;; CHECK-NEXT:    ;;@ file.cpp:20:2
  ;; CHECK-NEXT:    (local.get $y)
  ;; CHECK-NEXT:   )
+ ;; CHECK-NEXT:   ;;@
  ;; CHECK-NEXT:   (if
+ ;; CHECK-NEXT:    ;;@ file.cpp:20:2
  ;; CHECK-NEXT:    (local.get $z)
  ;; CHECK-NEXT:    (then
  ;; CHECK-NEXT:     (call $foo
+ ;; CHECK-NEXT:      ;;@
  ;; CHECK-NEXT:      (local.get $4)
+ ;; CHECK-NEXT:      ;;@
  ;; CHECK-NEXT:      (local.get $5)
  ;; CHECK-NEXT:     )
  ;; CHECK-NEXT:    )
  ;; CHECK-NEXT:    (else
+ ;; CHECK-NEXT:     ;;@ file.cpp:20:2
  ;; CHECK-NEXT:     (call $bar
+ ;; CHECK-NEXT:      ;;@
  ;; CHECK-NEXT:      (local.get $4)
+ ;; CHECK-NEXT:      ;;@
  ;; CHECK-NEXT:      (local.get $5)
  ;; CHECK-NEXT:     )
  ;; CHECK-NEXT:    )
  ;; CHECK-NEXT:   )
  ;; CHECK-NEXT:  )
+ ;; CHECK-NEXT:  ;;@ file.cpp:30:3
  ;; CHECK-NEXT:  (call_ref $i32_i32_=>_none
  ;; CHECK-NEXT:   (local.get $x)
  ;; CHECK-NEXT:   (local.get $y)
@@ -281,7 +297,11 @@
  ;; CHECK-NEXT:  )
  ;; CHECK-NEXT: )
  (func $call_ref-to-select (param $x i32) (param $y i32) (param $z i32) (param $f (ref $i32_i32_=>_none))
-  ;; This call_ref should become an if over two direct calls.
+  ;; This call_ref should become an if over two direct calls. The debuginfo
+  ;; should transfer as well to the two new calls (and some of the new helper
+  ;; code that is generated, but the critical part is the call_ref is being
+  ;; replaced by two calls, which should have the same info).
+  ;;@ file.cpp:20:2
   (call_ref $i32_i32_=>_none
    (local.get $x)
    (local.get $y)
@@ -293,6 +313,7 @@
   )
 
   ;; But here one arm is not constant, so we do not optimize.
+  ;;@ file.cpp:30:3
   (call_ref $i32_i32_=>_none
    (local.get $x)
    (local.get $y)

@@ -24,8 +24,8 @@ function makeFloat32(x) {
   return module.f32.const(x);
 }
 
-function makeInt64(l, h) {
-  return module.i64.const(l, h);
+function makeInt64(x) {
+  return module.i64.const(x);
 }
 
 function makeFloat64(x) {
@@ -100,6 +100,8 @@ function test_features() {
   console.log("Features.ExtendedConst: " + binaryen.Features.ExtendedConst);
   console.log("Features.Strings: " + binaryen.Features.Strings);
   console.log("Features.MultiMemory: " + binaryen.Features.MultiMemory);
+  console.log("Features.RelaxedAtomics: " + binaryen.Features.RelaxedAtomics);
+  console.log("Features.CustomPageSizes: " + binaryen.Features.CustomPageSizes);
   console.log("Features.All: " + binaryen.Features.All);
 }
 
@@ -179,13 +181,8 @@ function test_ids() {
   console.log("StringEncode: " + binaryen.StringEncodeId);
   console.log("StringConcat: " + binaryen.StringConcatId);
   console.log("StringEq: " + binaryen.StringEqId);
-  console.log("StringAs: " + binaryen.StringAsId);
-  console.log("StringWTF8Advance: " + binaryen.StringWTF8AdvanceId);
   console.log("StringWTF16Get: " + binaryen.StringWTF16GetId);
-  console.log("StringIterNext: " + binaryen.StringIterNextId);
-  console.log("StringIterMove: " + binaryen.StringIterMoveId);
   console.log("StringSliceWTF: " + binaryen.StringSliceWTFId);
-  console.log("StringSliceIter: " + binaryen.StringSliceIterId);
 }
 
 function test_core() {
@@ -219,7 +216,7 @@ function test_core() {
       constF32 = module.f32.const(3.14),
       constF64 = module.f64.const(2.1828),
       constF32Bits = module.f32.const_bits(0xffff1234),
-      constF64Bits = module.f64.const_bits(0x5678abcd, 0xffff1234);
+      constF64Bits = module.f64.const_bits(0xffff1234_5678abcdn);
 
   var iIfF = binaryen.createType([binaryen.i32, binaryen.i64, binaryen.f32, binaryen.f64])
 
@@ -231,10 +228,14 @@ function test_core() {
       temp13 = makeInt32(10), temp14 = makeInt32(11),
       temp15 = makeInt32(110), temp16 = makeInt64(111);
 
+  // Create a function to reference.
+  module.addFunction("foobar", iIfF, binaryen.i32, [], module.i32.const(0));
+  var foobarType = binaryen.Function(module.getFunction("foobar")).getType();
+
   var valueList = [
     // Unary
     module.i32.clz(module.i32.const(-10)),
-    module.i64.ctz(module.i64.const(-22, -1)),
+    module.i64.ctz(module.i64.const(-23)),
     module.i32.popcnt(module.i32.const(-10)),
     module.f32.neg(module.f32.const(-33.612)),
     module.f64.abs(module.f64.const(-9005.841)),
@@ -246,7 +247,7 @@ function test_core() {
     module.i32.eqz(module.i32.const(-10)),
     module.i64.extend_s(module.i32.const(-10)),
     module.i64.extend_u(module.i32.const(-10)),
-    module.i32.wrap(module.i64.const(-22, -1)),
+    module.i32.wrap(module.i64.const(-23)),
     module.i32.trunc_s.f32(module.f32.const(-33.612)),
     module.i64.trunc_s.f32(module.f32.const(-33.612)),
     module.i32.trunc_u.f32(module.f32.const(-33.612)),
@@ -269,18 +270,18 @@ function test_core() {
     module.f64.convert_s.i32(module.i32.const(-10)),
     module.f32.convert_u.i32(module.i32.const(-10)),
     module.f64.convert_u.i32(module.i32.const(-10)),
-    module.f32.convert_s.i64(module.i64.const(-22, -1)),
-    module.f64.convert_s.i64(module.i64.const(-22, -1)),
-    module.f32.convert_u.i64(module.i64.const(-22, -1)),
-    module.f64.convert_u.i64(module.i64.const(-22, -1)),
+    module.f32.convert_s.i64(module.i64.const(-23)),
+    module.f64.convert_s.i64(module.i64.const(-23)),
+    module.f32.convert_u.i64(module.i64.const(-23)),
+    module.f64.convert_u.i64(module.i64.const(-23)),
     module.f64.promote(module.f32.const(-33.612)),
     module.f32.demote(module.f64.const(-9005.841)),
     module.f32.reinterpret(module.i32.const(-10)),
-    module.f64.reinterpret(module.i64.const(-22, -1)),
+    module.f64.reinterpret(module.i64.const(-23)),
     module.i8x16.splat(module.i32.const(42)),
     module.i16x8.splat(module.i32.const(42)),
     module.i32x4.splat(module.i32.const(42)),
-    module.i64x2.splat(module.i64.const(123, 456)),
+    module.i64x2.splat(module.i64.const(1_000_000_000_123n)),
     module.f32x4.splat(module.f32.const(42.0)),
     module.f64x2.splat(module.f64.const(42.0)),
     module.v128.not(module.v128.const(v128_bytes)),
@@ -338,17 +339,17 @@ function test_core() {
     module.i32.add(module.i32.const(-10), module.i32.const(-11)),
     module.f64.sub(module.f64.const(-9005.841), module.f64.const(-9007.333)),
     module.i32.div_s(module.i32.const(-10), module.i32.const(-11)),
-    module.i64.div_u(module.i64.const(-22, 0), module.i64.const(-23, 0)),
-    module.i64.rem_s(module.i64.const(-22, 0), module.i64.const(-23, 0)),
+    module.i64.div_u(module.i64.const(-22), module.i64.const(-23)),
+    module.i64.rem_s(module.i64.const(-22), module.i64.const(-23)),
     module.i32.rem_u(module.i32.const(-10), module.i32.const(-11)),
     module.i32.and(module.i32.const(-10), module.i32.const(-11)),
-    module.i64.or(module.i64.const(-22, 0), module.i64.const(-23, 0)),
+    module.i64.or(module.i64.const(-22), module.i64.const(-23)),
     module.i32.xor(module.i32.const(-10), module.i32.const(-11)),
-    module.i64.shl(module.i64.const(-22, 0), module.i64.const(-23, 0)),
-    module.i64.shr_u(module.i64.const(-22, 0), module.i64.const(-23, 0)),
+    module.i64.shl(module.i64.const(-22), module.i64.const(-23)),
+    module.i64.shr_u(module.i64.const(-22), module.i64.const(-23)),
     module.i32.shr_s(module.i32.const(-10), module.i32.const(-11)),
     module.i32.rotl(module.i32.const(-10), module.i32.const(-11)),
-    module.i64.rotr(module.i64.const(-22, 0), module.i64.const(-23, 0)),
+    module.i64.rotr(module.i64.const(-22), module.i64.const(-23)),
     module.f32.div(module.f32.const(-33.612), module.f32.const(-62.5)),
     module.f64.copysign(module.f64.const(-9005.841), module.f64.const(-9007.333)),
     module.f32.min(module.f32.const(-33.612), module.f32.const(-62.5)),
@@ -356,13 +357,13 @@ function test_core() {
     module.i32.eq(module.i32.const(-10), module.i32.const(-11)),
     module.f32.ne(module.f32.const(-33.612), module.f32.const(-62.5)),
     module.i32.lt_s(module.i32.const(-10), module.i32.const(-11)),
-    module.i64.lt_u(module.i64.const(-22, 0), module.i64.const(-23, 0)),
-    module.i64.le_s(module.i64.const(-22, 0), module.i64.const(-23, 0)),
+    module.i64.lt_u(module.i64.const(-22), module.i64.const(-23)),
+    module.i64.le_s(module.i64.const(-22), module.i64.const(-23)),
     module.i32.le_u(module.i32.const(-10), module.i32.const(-11)),
-    module.i64.gt_s(module.i64.const(-22, 0), module.i64.const(-23, 0)),
+    module.i64.gt_s(module.i64.const(-23), module.i64.const(-23)),
     module.i32.gt_u(module.i32.const(-10), module.i32.const(-11)),
     module.i32.ge_s(module.i32.const(-10), module.i32.const(-11)),
-    module.i64.ge_u(module.i64.const(-22, 0), module.i64.const(-23, 0)),
+    module.i64.ge_u(module.i64.const(-22), module.i64.const(-23)),
     module.f32.lt(module.f32.const(-33.612), module.f32.const(-62.5)),
     module.f64.le(module.f64.const(-9005.841), module.f64.const(-9007.333)),
     module.f64.gt(module.f64.const(-9005.841), module.f64.const(-9007.333)),
@@ -507,7 +508,7 @@ function test_core() {
     module.i16x8.replace_lane(module.v128.const(v128_bytes), 1, module.i32.const(42)),
     module.i8x16.replace_lane(module.v128.const(v128_bytes), 1, module.i32.const(42)),
     module.i32x4.replace_lane(module.v128.const(v128_bytes), 1, module.i32.const(42)),
-    module.i64x2.replace_lane(module.v128.const(v128_bytes), 1, module.i64.const(42, 43)),
+    module.i64x2.replace_lane(module.v128.const(v128_bytes), 1, module.i64.const(42)),
     module.f32x4.replace_lane(module.v128.const(v128_bytes), 1, module.f32.const(42)),
     module.f64x2.replace_lane(module.v128.const(v128_bytes), 1, module.f64.const(42)),
     // SIMD shift
@@ -564,7 +565,7 @@ function test_core() {
     // All the rest
     module.block('', []), // block with no name
     module.if(temp1, temp2, temp3),
-    module.if(temp4, temp5),
+    module.if(temp4, module.drop(temp5)),
     module.loop("in", makeInt32(0)),
     module.loop(null, makeInt32(0)),
     module.break("the-value", temp6, temp7),
@@ -602,8 +603,8 @@ function test_core() {
     // Reference types
     module.ref.is_null(module.ref.null(binaryen.externref)),
     module.ref.is_null(module.ref.null(binaryen.funcref)),
-    module.ref.is_null(module.ref.func("kitchen()sinker", binaryen.funcref)),
-    module.select(temp10, module.ref.null(binaryen.funcref), module.ref.func("kitchen()sinker", binaryen.funcref), binaryen.funcref),
+    module.ref.is_null(module.ref.func("foobar", foobarType)),
+    module.select(temp10, module.ref.null(binaryen.funcref), module.ref.func("foobar", foobarType)),
 
     // GC
     module.ref.eq(module.ref.null(binaryen.eqref), module.ref.null(binaryen.eqref)),
@@ -623,6 +624,16 @@ function test_core() {
       module.i32.atomic.load(0,
         module.i32.const(0)
       )
+    ),
+    module.i32.atomic.store(0,
+      module.i32.const(0),
+      module.i32.atomic.load(0,
+        module.i32.const(0),
+        /* name=*/undefined,
+        binaryen.MemoryOrder.acqrel
+      ),
+      /*name=*/undefined,
+      binaryen.MemoryOrder.acqrel
     ),
     module.drop(
       module.memory.atomic.wait32(
@@ -661,10 +672,8 @@ function test_core() {
     module.eqref.pop(),
     module.i31ref.pop(),
     module.structref.pop(),
+    module.arrayref.pop(),
     module.stringref.pop(),
-    module.stringview_wtf8.pop(),
-    module.stringview_wtf16.pop(),
-    module.stringview_iter.pop(),
 
     // Memory
     module.memory.size(),
@@ -694,22 +703,39 @@ function test_core() {
   console.log("getExpressionInfo=" + JSON.stringify(cleanInfo(binaryen.getExpressionInfo(valueList[3]))));
   console.log(binaryen.emitText(valueList[3])); // test printing a standalone expression
 
-  console.log("getExpressionInfo(i32.const)=" + JSON.stringify(binaryen.getExpressionInfo(module.i32.const(5))));
-  console.log("getExpressionInfo(i64.const)=" + JSON.stringify(binaryen.getExpressionInfo(module.i64.const(6, 7))));
-  console.log("getExpressionInfo(f32.const)=" + JSON.stringify(binaryen.getExpressionInfo(module.f32.const(8.5))));
-  console.log("getExpressionInfo(f64.const)=" + JSON.stringify(binaryen.getExpressionInfo(module.f64.const(9.5))));
+  // Add drops of concrete expressions, except the last.
+  for (var i = 0; i < valueList.length - 1; i++) {
+    var type = binaryen.Expression.getType(valueList[i]);
+    if (type != binaryen.none && type != binaryen.unreachable) {
+      valueList[i] = module.drop(valueList[i]);
+    }
+  }
+
+  function infoToString(info) {
+    // BigInt values cannot be passed through JSON.stringify so convert
+    // them to strings first.
+    if (typeof info.value === 'bigint') {
+      info.value = info.value.toString();
+    }
+    return JSON.stringify(info);
+  }
+
+  console.log("getExpressionInfo(i32.const)=" + infoToString(binaryen.getExpressionInfo(module.i32.const(5))));
+  console.log("getExpressionInfo(i64.const)=" + infoToString(binaryen.getExpressionInfo(module.i64.const(6))));
+  console.log("getExpressionInfo(f32.const)=" + infoToString(binaryen.getExpressionInfo(module.f32.const(8.5))));
+  console.log("getExpressionInfo(f64.const)=" + infoToString(binaryen.getExpressionInfo(module.f64.const(9.5))));
   var elements = binaryen.getExpressionInfo(
     module.tuple.make([ makeInt32(13), makeInt64(37, 0), makeFloat32(1.3), makeFloat64(3.7) ])
   ).operands;
   for (var i = 0; i < elements.length; i++) {
-    console.log("getExpressionInfo(tuple[" + i + "])=" + JSON.stringify(binaryen.getExpressionInfo(elements[i])));
+    console.log("getExpressionInfo(tuple[" + i + "])=" + infoToString(binaryen.getExpressionInfo(elements[i])));
   }
 
   // Make the main body of the function. and one block with a return value, one without
-  var value = module.block("the-value", valueList);
+  var value = module.block("the-value", valueList, binaryen.i32);
   var droppedValue = module.drop(value);
   var nothing = module.block("the-nothing", [ droppedValue ]);
-  var body = module.block("the-body", [ nothing, makeInt32(42) ]);
+  var body = module.block("the-body", [ nothing, makeInt32(42) ], binaryen.i32);
 
   // Create the function
   var sinker = module.addFunction("kitchen()sinker", iIfF, binaryen.i32, [ binaryen.i32 ], body);
@@ -738,13 +764,6 @@ function test_core() {
   assert(tablePtr !== 0);
   assert(tablePtr === module.getTableByIndex(0));
 
-  var table = binaryen.getTableInfo(tablePtr);
-  assert(table.name === "t1");
-  assert(table.module === "");
-  assert(table.base === "");
-  assert(table.initial === 0);
-  assert(table.max === 2);
-
   module.removeTable("t1");
   assert(module.getNumTables() === 0);
 
@@ -753,17 +772,16 @@ function test_core() {
   assert(module.getNumTables() === 1);
   assert(module.getNumElementSegments() === 1);
 
+  module.addTable("t2", 1, 1, binaryen.i31ref, module.ref.i31(module.i32.const(1)));
+
   // Start function. One per module
   var starter = module.addFunction("starter", binaryen.none, binaryen.none, [], module.nop());
   module.setStart(starter);
-
-  // A bunch of our code needs drop, auto-add it
-  module.autoDrop();
+  assert(module.getStart() == starter);
 
   var features = binaryen.Features.All;
   module.setFeatures(features);
   assert(module.getFeatures() == features);
-  console.log(module.emitText());
 
   // Verify it validates
   assert(module.validate());
@@ -1002,6 +1020,55 @@ function test_binaries() {
   module.dispose();
 }
 
+function test_binaries_with_features() {
+  var builder = new binaryen.TypeBuilder(1);
+  builder.setStructType(0, [
+    { type: binaryen.i32, packedType: binaryen.notPacked, mutable: true },
+    { type: binaryen.f64, packedType: binaryen.notPacked, mutable: true }
+  ]);
+  var [structHeapType] = builder.buildAndDispose();
+  var structType = binaryen.getTypeFromHeapType(structHeapType, true);
+
+  var features = binaryen.Features.ReferenceTypes | binaryen.Features.GC;
+  module = new binaryen.Module();
+  module.setFeatures(features);
+
+  module.addGlobal("struct-global",
+    structType,
+    true,
+    module.struct.new(
+      [module.i32.const(42), module.f64.const(3.14)],
+      binaryen.getHeapType(structType)
+    )
+  );
+
+  module.addFunction("get-field", binaryen.none, binaryen.i32, [],
+    module.struct.get(
+      0,
+      module.global.get("struct-global", structType),
+      binaryen.i32,
+      false
+    )
+  );
+
+  assert(module.validate());
+  binaryen.setDebugInfo(true);
+  var buffer = module.emitBinary();
+  binaryen.setDebugInfo(false);
+  module.dispose();
+
+  module = binaryen.readBinaryWithFeatures(buffer, features);
+
+  assert(module.validate());
+  console.log("module loaded from binary with features:");
+  console.log(module.emitText());
+  module.dispose();
+
+  module = binaryen.readBinaryWithFeatures(buffer, binaryen.Features.MVP);
+  assert(!module.validate());
+  module.dispose();
+}
+
 function test_interpret() {
   // create a simple module with a start method that prints a number, and interpret it, printing that number.
   module = new binaryen.Module();
@@ -1126,13 +1193,17 @@ function test_for_each() {
       data: expected_data[2].split('').map(function(x) { return x.charCodeAt(0) })
     }
   ], false);
-  for (i = 0; i < module.getNumMemorySegments(); i++) {
-    var segment = module.getMemorySegmentInfo(expected_names[i]);
-    assert(expected_offsets[i] === segment.offset);
-    var data8 = new Uint8Array(segment.data);
+  assert(module.getDataSegment(expected_names[0]) !== 0);
+  assert(module.getDataSegment("NonExistantSegment") === 0);
+  for (i = 0; i < module.getNumDataSegments(); i++) {
+    var segment = module.getDataSegmentByIndex(i);
+    var info = module.getDataSegmentInfo(segment);
+    assert(expected_names[i] === info.name);
+    assert(expected_offsets[i] === info.offset);
+    var data8 = new Uint8Array(info.data);
     var str = String.fromCharCode.apply(null, data8);
     assert(expected_data[i] === str);
-    assert(expected_passive[i] === segment.passive);
+    assert(expected_passive[i] === info.passive);
   }
 
   module.addTable("t0", 1, 0xffffffff);
@@ -1171,15 +1242,52 @@ function test_expression_info() {
   module.dispose();
 }
 
+function test_relaxed_atomics() {
+  module = new binaryen.Module();
+  module.setFeatures(binaryen.Features.All);
+
+  module.setMemory(1, 1, "memory", [], false, false, "0");
+
+  var load = module.i32.load(0, 0, makeInt32(0), "0");
+  binaryen.Load.setMemoryOrder(load, binaryen.MemoryOrder.acqrel);
+  console.log("Load memory order: " + binaryen.Load.getMemoryOrder(load));
+
+  var store = module.i32.store(0, 0, makeInt32(0), makeInt32(1), "0");
+  binaryen.Store.setMemoryOrder(store, binaryen.MemoryOrder.acqrel);
+  console.log("Store memory order: " + binaryen.Store.getMemoryOrder(store));
+
+  var rmw = module.i32.atomic.rmw.add(0, makeInt32(0), makeInt32(1), "0", binaryen.MemoryOrder.seqcst);
+  binaryen.AtomicRMW.setMemoryOrder(rmw, binaryen.MemoryOrder.acqrel);
+  console.log("RMW memory order: " + binaryen.AtomicRMW.getMemoryOrder(rmw));
+
+  var cmpxchg = module.i32.atomic.rmw.cmpxchg(0, makeInt32(0), makeInt32(0), makeInt32(1), "0", binaryen.MemoryOrder.seqcst);
+  binaryen.AtomicCmpxchg.setMemoryOrder(cmpxchg, binaryen.MemoryOrder.acqrel);
+  console.log("Cmpxchg memory order: " + binaryen.AtomicCmpxchg.getMemoryOrder(cmpxchg));
+
+  var body = module.block("body", [
+    module.drop(load),
+    store,
+    module.drop(rmw),
+    module.drop(cmpxchg)
+  ], binaryen.auto);
+
+  module.addFunction("relaxed-atomics", binaryen.none, binaryen.none, [], body);
+
+  console.log(module.emitText());
+  module.dispose();
+}
+
 test_types();
 test_features();
 test_ids();
 test_core();
 test_relooper();
 test_binaries();
+test_binaries_with_features();
 test_interpret();
 test_nonvalid();
 test_parsing();
 test_internals();
 test_for_each();
 test_expression_info();
+test_relaxed_atomics();

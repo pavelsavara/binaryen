@@ -8,6 +8,7 @@
 ;; RUN: foreach %s %t wasm-opt --no-partial-inline=*maybe* --inlining --optimize-level=3 --partial-inlining-ifs=1 -S -o - | filecheck %s --check-prefix NO_PART
 ;; RUN: foreach %s %t wasm-opt --no-full-inline=*maybe*    --inlining --optimize-level=3 --partial-inlining-ifs=1 -S -o - | filecheck %s --check-prefix NO_FULL
 ;; RUN: foreach %s %t wasm-opt --no-inline=*maybe*         --inlining --optimize-level=3 --partial-inlining-ifs=1 -S -o - | filecheck %s --check-prefix NO_BOTH
+;; RUN: foreach %s %t wasm-opt --no-inline=*****maybe***** --inlining --optimize-level=3 --partial-inlining-ifs=1 -S -o - | filecheck %s --check-prefix NO_BOTH
 
 (module
   ;; YES_ALL:      (type $0 (func))
@@ -101,52 +102,44 @@
   ;; YES_ALL-NEXT:  (local $1 i32)
   ;; YES_ALL-NEXT:  (local $2 i32)
   ;; YES_ALL-NEXT:  (local $3 i32)
-  ;; YES_ALL-NEXT:  (block
-  ;; YES_ALL-NEXT:   (block $__inlined_func$full-yes-inline
-  ;; YES_ALL-NEXT:    (local.set $0
-  ;; YES_ALL-NEXT:     (i32.const 0)
-  ;; YES_ALL-NEXT:    )
-  ;; YES_ALL-NEXT:    (call $import)
+  ;; YES_ALL-NEXT:  (block $__inlined_func$full-yes-inline
+  ;; YES_ALL-NEXT:   (local.set $0
+  ;; YES_ALL-NEXT:    (i32.const 0)
   ;; YES_ALL-NEXT:   )
+  ;; YES_ALL-NEXT:   (call $import)
   ;; YES_ALL-NEXT:  )
-  ;; YES_ALL-NEXT:  (block
-  ;; YES_ALL-NEXT:   (block $__inlined_func$full-maybe-inline$1
-  ;; YES_ALL-NEXT:    (local.set $1
-  ;; YES_ALL-NEXT:     (i32.const 1)
-  ;; YES_ALL-NEXT:    )
-  ;; YES_ALL-NEXT:    (call $import)
+  ;; YES_ALL-NEXT:  (block $__inlined_func$full-maybe-inline$1
+  ;; YES_ALL-NEXT:   (local.set $1
+  ;; YES_ALL-NEXT:    (i32.const 1)
   ;; YES_ALL-NEXT:   )
+  ;; YES_ALL-NEXT:   (call $import)
   ;; YES_ALL-NEXT:  )
-  ;; YES_ALL-NEXT:  (block
-  ;; YES_ALL-NEXT:   (block $__inlined_func$byn-split-inlineable-A$partial-yes-inline$2
-  ;; YES_ALL-NEXT:    (local.set $2
-  ;; YES_ALL-NEXT:     (i32.const 2)
+  ;; YES_ALL-NEXT:  (block $__inlined_func$byn-split-inlineable-A$partial-yes-inline$2
+  ;; YES_ALL-NEXT:   (local.set $2
+  ;; YES_ALL-NEXT:    (i32.const 2)
+  ;; YES_ALL-NEXT:   )
+  ;; YES_ALL-NEXT:   (if
+  ;; YES_ALL-NEXT:    (i32.eqz
+  ;; YES_ALL-NEXT:     (local.get $2)
   ;; YES_ALL-NEXT:    )
-  ;; YES_ALL-NEXT:    (if
-  ;; YES_ALL-NEXT:     (i32.eqz
+  ;; YES_ALL-NEXT:    (then
+  ;; YES_ALL-NEXT:     (call $byn-split-outlined-A$partial-yes-inline
   ;; YES_ALL-NEXT:      (local.get $2)
   ;; YES_ALL-NEXT:     )
-  ;; YES_ALL-NEXT:     (then
-  ;; YES_ALL-NEXT:      (call $byn-split-outlined-A$partial-yes-inline
-  ;; YES_ALL-NEXT:       (local.get $2)
-  ;; YES_ALL-NEXT:      )
-  ;; YES_ALL-NEXT:     )
   ;; YES_ALL-NEXT:    )
   ;; YES_ALL-NEXT:   )
   ;; YES_ALL-NEXT:  )
-  ;; YES_ALL-NEXT:  (block
-  ;; YES_ALL-NEXT:   (block $__inlined_func$byn-split-inlineable-A$partial-maybe-inline$3
-  ;; YES_ALL-NEXT:    (local.set $3
-  ;; YES_ALL-NEXT:     (i32.const 3)
+  ;; YES_ALL-NEXT:  (block $__inlined_func$byn-split-inlineable-A$partial-maybe-inline$3
+  ;; YES_ALL-NEXT:   (local.set $3
+  ;; YES_ALL-NEXT:    (i32.const 3)
+  ;; YES_ALL-NEXT:   )
+  ;; YES_ALL-NEXT:   (if
+  ;; YES_ALL-NEXT:    (i32.eqz
+  ;; YES_ALL-NEXT:     (local.get $3)
   ;; YES_ALL-NEXT:    )
-  ;; YES_ALL-NEXT:    (if
-  ;; YES_ALL-NEXT:     (i32.eqz
+  ;; YES_ALL-NEXT:    (then
+  ;; YES_ALL-NEXT:     (call $byn-split-outlined-A$partial-maybe-inline
   ;; YES_ALL-NEXT:      (local.get $3)
-  ;; YES_ALL-NEXT:     )
-  ;; YES_ALL-NEXT:     (then
-  ;; YES_ALL-NEXT:      (call $byn-split-outlined-A$partial-maybe-inline
-  ;; YES_ALL-NEXT:       (local.get $3)
-  ;; YES_ALL-NEXT:      )
   ;; YES_ALL-NEXT:     )
   ;; YES_ALL-NEXT:    )
   ;; YES_ALL-NEXT:   )
@@ -156,35 +149,29 @@
   ;; NO_PART-NEXT:  (local $0 i32)
   ;; NO_PART-NEXT:  (local $1 i32)
   ;; NO_PART-NEXT:  (local $2 i32)
-  ;; NO_PART-NEXT:  (block
-  ;; NO_PART-NEXT:   (block $__inlined_func$full-yes-inline
-  ;; NO_PART-NEXT:    (local.set $0
-  ;; NO_PART-NEXT:     (i32.const 0)
-  ;; NO_PART-NEXT:    )
-  ;; NO_PART-NEXT:    (call $import)
+  ;; NO_PART-NEXT:  (block $__inlined_func$full-yes-inline
+  ;; NO_PART-NEXT:   (local.set $0
+  ;; NO_PART-NEXT:    (i32.const 0)
   ;; NO_PART-NEXT:   )
+  ;; NO_PART-NEXT:   (call $import)
   ;; NO_PART-NEXT:  )
-  ;; NO_PART-NEXT:  (block
-  ;; NO_PART-NEXT:   (block $__inlined_func$full-maybe-inline$1
-  ;; NO_PART-NEXT:    (local.set $1
-  ;; NO_PART-NEXT:     (i32.const 1)
-  ;; NO_PART-NEXT:    )
-  ;; NO_PART-NEXT:    (call $import)
+  ;; NO_PART-NEXT:  (block $__inlined_func$full-maybe-inline$1
+  ;; NO_PART-NEXT:   (local.set $1
+  ;; NO_PART-NEXT:    (i32.const 1)
   ;; NO_PART-NEXT:   )
+  ;; NO_PART-NEXT:   (call $import)
   ;; NO_PART-NEXT:  )
-  ;; NO_PART-NEXT:  (block
-  ;; NO_PART-NEXT:   (block $__inlined_func$byn-split-inlineable-A$partial-yes-inline$2
-  ;; NO_PART-NEXT:    (local.set $2
-  ;; NO_PART-NEXT:     (i32.const 2)
+  ;; NO_PART-NEXT:  (block $__inlined_func$byn-split-inlineable-A$partial-yes-inline$2
+  ;; NO_PART-NEXT:   (local.set $2
+  ;; NO_PART-NEXT:    (i32.const 2)
+  ;; NO_PART-NEXT:   )
+  ;; NO_PART-NEXT:   (if
+  ;; NO_PART-NEXT:    (i32.eqz
+  ;; NO_PART-NEXT:     (local.get $2)
   ;; NO_PART-NEXT:    )
-  ;; NO_PART-NEXT:    (if
-  ;; NO_PART-NEXT:     (i32.eqz
+  ;; NO_PART-NEXT:    (then
+  ;; NO_PART-NEXT:     (call $byn-split-outlined-A$partial-yes-inline
   ;; NO_PART-NEXT:      (local.get $2)
-  ;; NO_PART-NEXT:     )
-  ;; NO_PART-NEXT:     (then
-  ;; NO_PART-NEXT:      (call $byn-split-outlined-A$partial-yes-inline
-  ;; NO_PART-NEXT:       (local.get $2)
-  ;; NO_PART-NEXT:      )
   ;; NO_PART-NEXT:     )
   ;; NO_PART-NEXT:    )
   ;; NO_PART-NEXT:   )
@@ -197,47 +184,41 @@
   ;; NO_FULL-NEXT:  (local $0 i32)
   ;; NO_FULL-NEXT:  (local $1 i32)
   ;; NO_FULL-NEXT:  (local $2 i32)
-  ;; NO_FULL-NEXT:  (block
-  ;; NO_FULL-NEXT:   (block $__inlined_func$full-yes-inline
-  ;; NO_FULL-NEXT:    (local.set $0
-  ;; NO_FULL-NEXT:     (i32.const 0)
-  ;; NO_FULL-NEXT:    )
-  ;; NO_FULL-NEXT:    (call $import)
+  ;; NO_FULL-NEXT:  (block $__inlined_func$full-yes-inline
+  ;; NO_FULL-NEXT:   (local.set $0
+  ;; NO_FULL-NEXT:    (i32.const 0)
   ;; NO_FULL-NEXT:   )
+  ;; NO_FULL-NEXT:   (call $import)
   ;; NO_FULL-NEXT:  )
   ;; NO_FULL-NEXT:  (call $full-maybe-inline
   ;; NO_FULL-NEXT:   (i32.const 1)
   ;; NO_FULL-NEXT:  )
-  ;; NO_FULL-NEXT:  (block
-  ;; NO_FULL-NEXT:   (block $__inlined_func$byn-split-inlineable-A$partial-yes-inline$1
-  ;; NO_FULL-NEXT:    (local.set $1
-  ;; NO_FULL-NEXT:     (i32.const 2)
+  ;; NO_FULL-NEXT:  (block $__inlined_func$byn-split-inlineable-A$partial-yes-inline$1
+  ;; NO_FULL-NEXT:   (local.set $1
+  ;; NO_FULL-NEXT:    (i32.const 2)
+  ;; NO_FULL-NEXT:   )
+  ;; NO_FULL-NEXT:   (if
+  ;; NO_FULL-NEXT:    (i32.eqz
+  ;; NO_FULL-NEXT:     (local.get $1)
   ;; NO_FULL-NEXT:    )
-  ;; NO_FULL-NEXT:    (if
-  ;; NO_FULL-NEXT:     (i32.eqz
+  ;; NO_FULL-NEXT:    (then
+  ;; NO_FULL-NEXT:     (call $byn-split-outlined-A$partial-yes-inline
   ;; NO_FULL-NEXT:      (local.get $1)
-  ;; NO_FULL-NEXT:     )
-  ;; NO_FULL-NEXT:     (then
-  ;; NO_FULL-NEXT:      (call $byn-split-outlined-A$partial-yes-inline
-  ;; NO_FULL-NEXT:       (local.get $1)
-  ;; NO_FULL-NEXT:      )
   ;; NO_FULL-NEXT:     )
   ;; NO_FULL-NEXT:    )
   ;; NO_FULL-NEXT:   )
   ;; NO_FULL-NEXT:  )
-  ;; NO_FULL-NEXT:  (block
-  ;; NO_FULL-NEXT:   (block $__inlined_func$byn-split-inlineable-A$partial-maybe-inline$2
-  ;; NO_FULL-NEXT:    (local.set $2
-  ;; NO_FULL-NEXT:     (i32.const 3)
+  ;; NO_FULL-NEXT:  (block $__inlined_func$byn-split-inlineable-A$partial-maybe-inline$2
+  ;; NO_FULL-NEXT:   (local.set $2
+  ;; NO_FULL-NEXT:    (i32.const 3)
+  ;; NO_FULL-NEXT:   )
+  ;; NO_FULL-NEXT:   (if
+  ;; NO_FULL-NEXT:    (i32.eqz
+  ;; NO_FULL-NEXT:     (local.get $2)
   ;; NO_FULL-NEXT:    )
-  ;; NO_FULL-NEXT:    (if
-  ;; NO_FULL-NEXT:     (i32.eqz
+  ;; NO_FULL-NEXT:    (then
+  ;; NO_FULL-NEXT:     (call $byn-split-outlined-A$partial-maybe-inline
   ;; NO_FULL-NEXT:      (local.get $2)
-  ;; NO_FULL-NEXT:     )
-  ;; NO_FULL-NEXT:     (then
-  ;; NO_FULL-NEXT:      (call $byn-split-outlined-A$partial-maybe-inline
-  ;; NO_FULL-NEXT:       (local.get $2)
-  ;; NO_FULL-NEXT:      )
   ;; NO_FULL-NEXT:     )
   ;; NO_FULL-NEXT:    )
   ;; NO_FULL-NEXT:   )
@@ -246,30 +227,26 @@
   ;; NO_BOTH:      (func $caller
   ;; NO_BOTH-NEXT:  (local $0 i32)
   ;; NO_BOTH-NEXT:  (local $1 i32)
-  ;; NO_BOTH-NEXT:  (block
-  ;; NO_BOTH-NEXT:   (block $__inlined_func$full-yes-inline
-  ;; NO_BOTH-NEXT:    (local.set $0
-  ;; NO_BOTH-NEXT:     (i32.const 0)
-  ;; NO_BOTH-NEXT:    )
-  ;; NO_BOTH-NEXT:    (call $import)
+  ;; NO_BOTH-NEXT:  (block $__inlined_func$full-yes-inline
+  ;; NO_BOTH-NEXT:   (local.set $0
+  ;; NO_BOTH-NEXT:    (i32.const 0)
   ;; NO_BOTH-NEXT:   )
+  ;; NO_BOTH-NEXT:   (call $import)
   ;; NO_BOTH-NEXT:  )
   ;; NO_BOTH-NEXT:  (call $full-maybe-inline
   ;; NO_BOTH-NEXT:   (i32.const 1)
   ;; NO_BOTH-NEXT:  )
-  ;; NO_BOTH-NEXT:  (block
-  ;; NO_BOTH-NEXT:   (block $__inlined_func$byn-split-inlineable-A$partial-yes-inline$1
-  ;; NO_BOTH-NEXT:    (local.set $1
-  ;; NO_BOTH-NEXT:     (i32.const 2)
+  ;; NO_BOTH-NEXT:  (block $__inlined_func$byn-split-inlineable-A$partial-yes-inline$1
+  ;; NO_BOTH-NEXT:   (local.set $1
+  ;; NO_BOTH-NEXT:    (i32.const 2)
+  ;; NO_BOTH-NEXT:   )
+  ;; NO_BOTH-NEXT:   (if
+  ;; NO_BOTH-NEXT:    (i32.eqz
+  ;; NO_BOTH-NEXT:     (local.get $1)
   ;; NO_BOTH-NEXT:    )
-  ;; NO_BOTH-NEXT:    (if
-  ;; NO_BOTH-NEXT:     (i32.eqz
+  ;; NO_BOTH-NEXT:    (then
+  ;; NO_BOTH-NEXT:     (call $byn-split-outlined-A$partial-yes-inline
   ;; NO_BOTH-NEXT:      (local.get $1)
-  ;; NO_BOTH-NEXT:     )
-  ;; NO_BOTH-NEXT:     (then
-  ;; NO_BOTH-NEXT:      (call $byn-split-outlined-A$partial-yes-inline
-  ;; NO_BOTH-NEXT:       (local.get $1)
-  ;; NO_BOTH-NEXT:      )
   ;; NO_BOTH-NEXT:     )
   ;; NO_BOTH-NEXT:    )
   ;; NO_BOTH-NEXT:   )
@@ -298,52 +275,44 @@
   ;; YES_ALL-NEXT:  (local $1 i32)
   ;; YES_ALL-NEXT:  (local $2 i32)
   ;; YES_ALL-NEXT:  (local $3 i32)
-  ;; YES_ALL-NEXT:  (block
-  ;; YES_ALL-NEXT:   (block $__inlined_func$full-yes-inline$4
-  ;; YES_ALL-NEXT:    (local.set $0
-  ;; YES_ALL-NEXT:     (i32.const 0)
-  ;; YES_ALL-NEXT:    )
-  ;; YES_ALL-NEXT:    (call $import)
+  ;; YES_ALL-NEXT:  (block $__inlined_func$full-yes-inline$4
+  ;; YES_ALL-NEXT:   (local.set $0
+  ;; YES_ALL-NEXT:    (i32.const 0)
   ;; YES_ALL-NEXT:   )
+  ;; YES_ALL-NEXT:   (call $import)
   ;; YES_ALL-NEXT:  )
-  ;; YES_ALL-NEXT:  (block
-  ;; YES_ALL-NEXT:   (block $__inlined_func$full-maybe-inline$5
-  ;; YES_ALL-NEXT:    (local.set $1
-  ;; YES_ALL-NEXT:     (i32.const 1)
-  ;; YES_ALL-NEXT:    )
-  ;; YES_ALL-NEXT:    (call $import)
+  ;; YES_ALL-NEXT:  (block $__inlined_func$full-maybe-inline$5
+  ;; YES_ALL-NEXT:   (local.set $1
+  ;; YES_ALL-NEXT:    (i32.const 1)
   ;; YES_ALL-NEXT:   )
+  ;; YES_ALL-NEXT:   (call $import)
   ;; YES_ALL-NEXT:  )
-  ;; YES_ALL-NEXT:  (block
-  ;; YES_ALL-NEXT:   (block $__inlined_func$byn-split-inlineable-A$partial-yes-inline$6
-  ;; YES_ALL-NEXT:    (local.set $2
-  ;; YES_ALL-NEXT:     (i32.const 2)
+  ;; YES_ALL-NEXT:  (block $__inlined_func$byn-split-inlineable-A$partial-yes-inline$6
+  ;; YES_ALL-NEXT:   (local.set $2
+  ;; YES_ALL-NEXT:    (i32.const 2)
+  ;; YES_ALL-NEXT:   )
+  ;; YES_ALL-NEXT:   (if
+  ;; YES_ALL-NEXT:    (i32.eqz
+  ;; YES_ALL-NEXT:     (local.get $2)
   ;; YES_ALL-NEXT:    )
-  ;; YES_ALL-NEXT:    (if
-  ;; YES_ALL-NEXT:     (i32.eqz
+  ;; YES_ALL-NEXT:    (then
+  ;; YES_ALL-NEXT:     (call $byn-split-outlined-A$partial-yes-inline
   ;; YES_ALL-NEXT:      (local.get $2)
   ;; YES_ALL-NEXT:     )
-  ;; YES_ALL-NEXT:     (then
-  ;; YES_ALL-NEXT:      (call $byn-split-outlined-A$partial-yes-inline
-  ;; YES_ALL-NEXT:       (local.get $2)
-  ;; YES_ALL-NEXT:      )
-  ;; YES_ALL-NEXT:     )
   ;; YES_ALL-NEXT:    )
   ;; YES_ALL-NEXT:   )
   ;; YES_ALL-NEXT:  )
-  ;; YES_ALL-NEXT:  (block
-  ;; YES_ALL-NEXT:   (block $__inlined_func$byn-split-inlineable-A$partial-maybe-inline$7
-  ;; YES_ALL-NEXT:    (local.set $3
-  ;; YES_ALL-NEXT:     (i32.const 3)
+  ;; YES_ALL-NEXT:  (block $__inlined_func$byn-split-inlineable-A$partial-maybe-inline$7
+  ;; YES_ALL-NEXT:   (local.set $3
+  ;; YES_ALL-NEXT:    (i32.const 3)
+  ;; YES_ALL-NEXT:   )
+  ;; YES_ALL-NEXT:   (if
+  ;; YES_ALL-NEXT:    (i32.eqz
+  ;; YES_ALL-NEXT:     (local.get $3)
   ;; YES_ALL-NEXT:    )
-  ;; YES_ALL-NEXT:    (if
-  ;; YES_ALL-NEXT:     (i32.eqz
+  ;; YES_ALL-NEXT:    (then
+  ;; YES_ALL-NEXT:     (call $byn-split-outlined-A$partial-maybe-inline
   ;; YES_ALL-NEXT:      (local.get $3)
-  ;; YES_ALL-NEXT:     )
-  ;; YES_ALL-NEXT:     (then
-  ;; YES_ALL-NEXT:      (call $byn-split-outlined-A$partial-maybe-inline
-  ;; YES_ALL-NEXT:       (local.get $3)
-  ;; YES_ALL-NEXT:      )
   ;; YES_ALL-NEXT:     )
   ;; YES_ALL-NEXT:    )
   ;; YES_ALL-NEXT:   )
@@ -353,35 +322,29 @@
   ;; NO_PART-NEXT:  (local $0 i32)
   ;; NO_PART-NEXT:  (local $1 i32)
   ;; NO_PART-NEXT:  (local $2 i32)
-  ;; NO_PART-NEXT:  (block
-  ;; NO_PART-NEXT:   (block $__inlined_func$full-yes-inline$3
-  ;; NO_PART-NEXT:    (local.set $0
-  ;; NO_PART-NEXT:     (i32.const 0)
-  ;; NO_PART-NEXT:    )
-  ;; NO_PART-NEXT:    (call $import)
+  ;; NO_PART-NEXT:  (block $__inlined_func$full-yes-inline$3
+  ;; NO_PART-NEXT:   (local.set $0
+  ;; NO_PART-NEXT:    (i32.const 0)
   ;; NO_PART-NEXT:   )
+  ;; NO_PART-NEXT:   (call $import)
   ;; NO_PART-NEXT:  )
-  ;; NO_PART-NEXT:  (block
-  ;; NO_PART-NEXT:   (block $__inlined_func$full-maybe-inline$4
-  ;; NO_PART-NEXT:    (local.set $1
-  ;; NO_PART-NEXT:     (i32.const 1)
-  ;; NO_PART-NEXT:    )
-  ;; NO_PART-NEXT:    (call $import)
+  ;; NO_PART-NEXT:  (block $__inlined_func$full-maybe-inline$4
+  ;; NO_PART-NEXT:   (local.set $1
+  ;; NO_PART-NEXT:    (i32.const 1)
   ;; NO_PART-NEXT:   )
+  ;; NO_PART-NEXT:   (call $import)
   ;; NO_PART-NEXT:  )
-  ;; NO_PART-NEXT:  (block
-  ;; NO_PART-NEXT:   (block $__inlined_func$byn-split-inlineable-A$partial-yes-inline$5
-  ;; NO_PART-NEXT:    (local.set $2
-  ;; NO_PART-NEXT:     (i32.const 2)
+  ;; NO_PART-NEXT:  (block $__inlined_func$byn-split-inlineable-A$partial-yes-inline$5
+  ;; NO_PART-NEXT:   (local.set $2
+  ;; NO_PART-NEXT:    (i32.const 2)
+  ;; NO_PART-NEXT:   )
+  ;; NO_PART-NEXT:   (if
+  ;; NO_PART-NEXT:    (i32.eqz
+  ;; NO_PART-NEXT:     (local.get $2)
   ;; NO_PART-NEXT:    )
-  ;; NO_PART-NEXT:    (if
-  ;; NO_PART-NEXT:     (i32.eqz
+  ;; NO_PART-NEXT:    (then
+  ;; NO_PART-NEXT:     (call $byn-split-outlined-A$partial-yes-inline
   ;; NO_PART-NEXT:      (local.get $2)
-  ;; NO_PART-NEXT:     )
-  ;; NO_PART-NEXT:     (then
-  ;; NO_PART-NEXT:      (call $byn-split-outlined-A$partial-yes-inline
-  ;; NO_PART-NEXT:       (local.get $2)
-  ;; NO_PART-NEXT:      )
   ;; NO_PART-NEXT:     )
   ;; NO_PART-NEXT:    )
   ;; NO_PART-NEXT:   )
@@ -394,47 +357,41 @@
   ;; NO_FULL-NEXT:  (local $0 i32)
   ;; NO_FULL-NEXT:  (local $1 i32)
   ;; NO_FULL-NEXT:  (local $2 i32)
-  ;; NO_FULL-NEXT:  (block
-  ;; NO_FULL-NEXT:   (block $__inlined_func$full-yes-inline$3
-  ;; NO_FULL-NEXT:    (local.set $0
-  ;; NO_FULL-NEXT:     (i32.const 0)
-  ;; NO_FULL-NEXT:    )
-  ;; NO_FULL-NEXT:    (call $import)
+  ;; NO_FULL-NEXT:  (block $__inlined_func$full-yes-inline$3
+  ;; NO_FULL-NEXT:   (local.set $0
+  ;; NO_FULL-NEXT:    (i32.const 0)
   ;; NO_FULL-NEXT:   )
+  ;; NO_FULL-NEXT:   (call $import)
   ;; NO_FULL-NEXT:  )
   ;; NO_FULL-NEXT:  (call $full-maybe-inline
   ;; NO_FULL-NEXT:   (i32.const 1)
   ;; NO_FULL-NEXT:  )
-  ;; NO_FULL-NEXT:  (block
-  ;; NO_FULL-NEXT:   (block $__inlined_func$byn-split-inlineable-A$partial-yes-inline$4
-  ;; NO_FULL-NEXT:    (local.set $1
-  ;; NO_FULL-NEXT:     (i32.const 2)
+  ;; NO_FULL-NEXT:  (block $__inlined_func$byn-split-inlineable-A$partial-yes-inline$4
+  ;; NO_FULL-NEXT:   (local.set $1
+  ;; NO_FULL-NEXT:    (i32.const 2)
+  ;; NO_FULL-NEXT:   )
+  ;; NO_FULL-NEXT:   (if
+  ;; NO_FULL-NEXT:    (i32.eqz
+  ;; NO_FULL-NEXT:     (local.get $1)
   ;; NO_FULL-NEXT:    )
-  ;; NO_FULL-NEXT:    (if
-  ;; NO_FULL-NEXT:     (i32.eqz
+  ;; NO_FULL-NEXT:    (then
+  ;; NO_FULL-NEXT:     (call $byn-split-outlined-A$partial-yes-inline
   ;; NO_FULL-NEXT:      (local.get $1)
-  ;; NO_FULL-NEXT:     )
-  ;; NO_FULL-NEXT:     (then
-  ;; NO_FULL-NEXT:      (call $byn-split-outlined-A$partial-yes-inline
-  ;; NO_FULL-NEXT:       (local.get $1)
-  ;; NO_FULL-NEXT:      )
   ;; NO_FULL-NEXT:     )
   ;; NO_FULL-NEXT:    )
   ;; NO_FULL-NEXT:   )
   ;; NO_FULL-NEXT:  )
-  ;; NO_FULL-NEXT:  (block
-  ;; NO_FULL-NEXT:   (block $__inlined_func$byn-split-inlineable-A$partial-maybe-inline$5
-  ;; NO_FULL-NEXT:    (local.set $2
-  ;; NO_FULL-NEXT:     (i32.const 3)
+  ;; NO_FULL-NEXT:  (block $__inlined_func$byn-split-inlineable-A$partial-maybe-inline$5
+  ;; NO_FULL-NEXT:   (local.set $2
+  ;; NO_FULL-NEXT:    (i32.const 3)
+  ;; NO_FULL-NEXT:   )
+  ;; NO_FULL-NEXT:   (if
+  ;; NO_FULL-NEXT:    (i32.eqz
+  ;; NO_FULL-NEXT:     (local.get $2)
   ;; NO_FULL-NEXT:    )
-  ;; NO_FULL-NEXT:    (if
-  ;; NO_FULL-NEXT:     (i32.eqz
+  ;; NO_FULL-NEXT:    (then
+  ;; NO_FULL-NEXT:     (call $byn-split-outlined-A$partial-maybe-inline
   ;; NO_FULL-NEXT:      (local.get $2)
-  ;; NO_FULL-NEXT:     )
-  ;; NO_FULL-NEXT:     (then
-  ;; NO_FULL-NEXT:      (call $byn-split-outlined-A$partial-maybe-inline
-  ;; NO_FULL-NEXT:       (local.get $2)
-  ;; NO_FULL-NEXT:      )
   ;; NO_FULL-NEXT:     )
   ;; NO_FULL-NEXT:    )
   ;; NO_FULL-NEXT:   )
@@ -443,30 +400,26 @@
   ;; NO_BOTH:      (func $caller-2
   ;; NO_BOTH-NEXT:  (local $0 i32)
   ;; NO_BOTH-NEXT:  (local $1 i32)
-  ;; NO_BOTH-NEXT:  (block
-  ;; NO_BOTH-NEXT:   (block $__inlined_func$full-yes-inline$2
-  ;; NO_BOTH-NEXT:    (local.set $0
-  ;; NO_BOTH-NEXT:     (i32.const 0)
-  ;; NO_BOTH-NEXT:    )
-  ;; NO_BOTH-NEXT:    (call $import)
+  ;; NO_BOTH-NEXT:  (block $__inlined_func$full-yes-inline$2
+  ;; NO_BOTH-NEXT:   (local.set $0
+  ;; NO_BOTH-NEXT:    (i32.const 0)
   ;; NO_BOTH-NEXT:   )
+  ;; NO_BOTH-NEXT:   (call $import)
   ;; NO_BOTH-NEXT:  )
   ;; NO_BOTH-NEXT:  (call $full-maybe-inline
   ;; NO_BOTH-NEXT:   (i32.const 1)
   ;; NO_BOTH-NEXT:  )
-  ;; NO_BOTH-NEXT:  (block
-  ;; NO_BOTH-NEXT:   (block $__inlined_func$byn-split-inlineable-A$partial-yes-inline$3
-  ;; NO_BOTH-NEXT:    (local.set $1
-  ;; NO_BOTH-NEXT:     (i32.const 2)
+  ;; NO_BOTH-NEXT:  (block $__inlined_func$byn-split-inlineable-A$partial-yes-inline$3
+  ;; NO_BOTH-NEXT:   (local.set $1
+  ;; NO_BOTH-NEXT:    (i32.const 2)
+  ;; NO_BOTH-NEXT:   )
+  ;; NO_BOTH-NEXT:   (if
+  ;; NO_BOTH-NEXT:    (i32.eqz
+  ;; NO_BOTH-NEXT:     (local.get $1)
   ;; NO_BOTH-NEXT:    )
-  ;; NO_BOTH-NEXT:    (if
-  ;; NO_BOTH-NEXT:     (i32.eqz
+  ;; NO_BOTH-NEXT:    (then
+  ;; NO_BOTH-NEXT:     (call $byn-split-outlined-A$partial-yes-inline
   ;; NO_BOTH-NEXT:      (local.get $1)
-  ;; NO_BOTH-NEXT:     )
-  ;; NO_BOTH-NEXT:     (then
-  ;; NO_BOTH-NEXT:      (call $byn-split-outlined-A$partial-yes-inline
-  ;; NO_BOTH-NEXT:       (local.get $1)
-  ;; NO_BOTH-NEXT:      )
   ;; NO_BOTH-NEXT:     )
   ;; NO_BOTH-NEXT:    )
   ;; NO_BOTH-NEXT:   )
@@ -686,115 +639,167 @@
   )
  )
 
+(func $very-long-name-we-should-not-error-on-even-though-it-is-very-very-long
+  ;; Test a long name.
+ )
+
+ ;; NO_FULL:      (func $very-long-name-we-should-not-error-on-maybe-even-though-it-is-very-very-long
+ ;; NO_FULL-NEXT: )
+ ;; NO_BOTH:      (func $very-long-name-we-should-not-error-on-maybe-even-though-it-is-very-very-long
+ ;; NO_BOTH-NEXT: )
+ (func $very-long-name-we-should-not-error-on-maybe-even-though-it-is-very-very-long
+  ;; Test a long name with "maybe" in it.
+ )
+
+ ;; NO_FULL:      (func $very-long-name-we-may-should-not-error-on-maybe-even-though-it-is-very-very-long
+ ;; NO_FULL-NEXT: )
+ ;; NO_BOTH:      (func $very-long-name-we-may-should-not-error-on-maybe-even-though-it-is-very-very-long
+ ;; NO_BOTH-NEXT: )
+ (func $very-long-name-we-may-should-not-error-on-maybe-even-though-it-is-very-very-long
+  ;; Test a long name with "maybe" in it, and a partial match earlier ("may").
+ )
+
+(func $maybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmayb
+  ;; Test a long name with many partial matches but no real match.
+)
+
+;; NO_FULL:      (func $maybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybe
+;; NO_FULL-NEXT: )
+;; NO_BOTH:      (func $maybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybe
+;; NO_BOTH-NEXT: )
+(func $maybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybe
+  ;; Test a long name with many partial matches and one real match right at the end.
+)
+
+(func $mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm
+  ;; Test a long name with even more tiny partial matches but no real match.
+)
+
  ;; YES_ALL:      (func $caller
  ;; YES_ALL-NEXT:  (local $0 i32)
  ;; YES_ALL-NEXT:  (local $1 i32)
  ;; YES_ALL-NEXT:  (local $2 i32)
  ;; YES_ALL-NEXT:  (local $3 i32)
- ;; YES_ALL-NEXT:  (block
- ;; YES_ALL-NEXT:   (block $__inlined_func$maybe-partial-or-full-1
- ;; YES_ALL-NEXT:    (local.set $0
+ ;; YES_ALL-NEXT:  (block $__inlined_func$maybe-partial-or-full-1
+ ;; YES_ALL-NEXT:   (local.set $0
+ ;; YES_ALL-NEXT:    (i32.const 0)
+ ;; YES_ALL-NEXT:   )
+ ;; YES_ALL-NEXT:   (if
+ ;; YES_ALL-NEXT:    (local.get $0)
+ ;; YES_ALL-NEXT:    (then
+ ;; YES_ALL-NEXT:     (call $import)
+ ;; YES_ALL-NEXT:    )
+ ;; YES_ALL-NEXT:   )
+ ;; YES_ALL-NEXT:  )
+ ;; YES_ALL-NEXT:  (block $__inlined_func$maybe-partial-or-full-1$1
+ ;; YES_ALL-NEXT:   (local.set $1
+ ;; YES_ALL-NEXT:    (i32.const 1)
+ ;; YES_ALL-NEXT:   )
+ ;; YES_ALL-NEXT:   (if
+ ;; YES_ALL-NEXT:    (local.get $1)
+ ;; YES_ALL-NEXT:    (then
+ ;; YES_ALL-NEXT:     (call $import)
+ ;; YES_ALL-NEXT:    )
+ ;; YES_ALL-NEXT:   )
+ ;; YES_ALL-NEXT:  )
+ ;; YES_ALL-NEXT:  (block $__inlined_func$maybe-partial-or-full-2$2
+ ;; YES_ALL-NEXT:   (local.set $2
+ ;; YES_ALL-NEXT:    (i32.const 0)
+ ;; YES_ALL-NEXT:   )
+ ;; YES_ALL-NEXT:   (block
+ ;; YES_ALL-NEXT:    (if
+ ;; YES_ALL-NEXT:     (local.get $2)
+ ;; YES_ALL-NEXT:     (then
+ ;; YES_ALL-NEXT:      (br $__inlined_func$maybe-partial-or-full-2$2)
+ ;; YES_ALL-NEXT:     )
+ ;; YES_ALL-NEXT:    )
+ ;; YES_ALL-NEXT:    (nop)
+ ;; YES_ALL-NEXT:    (drop
  ;; YES_ALL-NEXT:     (i32.const 0)
  ;; YES_ALL-NEXT:    )
- ;; YES_ALL-NEXT:    (if
- ;; YES_ALL-NEXT:     (local.get $0)
- ;; YES_ALL-NEXT:     (then
- ;; YES_ALL-NEXT:      (call $import)
- ;; YES_ALL-NEXT:     )
- ;; YES_ALL-NEXT:    )
- ;; YES_ALL-NEXT:   )
- ;; YES_ALL-NEXT:  )
- ;; YES_ALL-NEXT:  (block
- ;; YES_ALL-NEXT:   (block $__inlined_func$maybe-partial-or-full-1$1
- ;; YES_ALL-NEXT:    (local.set $1
- ;; YES_ALL-NEXT:     (i32.const 1)
- ;; YES_ALL-NEXT:    )
- ;; YES_ALL-NEXT:    (if
- ;; YES_ALL-NEXT:     (local.get $1)
- ;; YES_ALL-NEXT:     (then
- ;; YES_ALL-NEXT:      (call $import)
- ;; YES_ALL-NEXT:     )
- ;; YES_ALL-NEXT:    )
- ;; YES_ALL-NEXT:   )
- ;; YES_ALL-NEXT:  )
- ;; YES_ALL-NEXT:  (block
- ;; YES_ALL-NEXT:   (block $__inlined_func$maybe-partial-or-full-2$2
- ;; YES_ALL-NEXT:    (local.set $2
+ ;; YES_ALL-NEXT:    (drop
  ;; YES_ALL-NEXT:     (i32.const 0)
  ;; YES_ALL-NEXT:    )
- ;; YES_ALL-NEXT:    (block
- ;; YES_ALL-NEXT:     (if
- ;; YES_ALL-NEXT:      (local.get $2)
- ;; YES_ALL-NEXT:      (then
- ;; YES_ALL-NEXT:       (br $__inlined_func$maybe-partial-or-full-2$2)
- ;; YES_ALL-NEXT:      )
- ;; YES_ALL-NEXT:     )
- ;; YES_ALL-NEXT:     (nop)
- ;; YES_ALL-NEXT:     (drop
- ;; YES_ALL-NEXT:      (i32.const 0)
- ;; YES_ALL-NEXT:     )
- ;; YES_ALL-NEXT:     (drop
- ;; YES_ALL-NEXT:      (i32.const 0)
- ;; YES_ALL-NEXT:     )
- ;; YES_ALL-NEXT:     (drop
- ;; YES_ALL-NEXT:      (i32.const 0)
- ;; YES_ALL-NEXT:     )
- ;; YES_ALL-NEXT:     (drop
- ;; YES_ALL-NEXT:      (i32.const 0)
- ;; YES_ALL-NEXT:     )
- ;; YES_ALL-NEXT:     (drop
- ;; YES_ALL-NEXT:      (i32.const 0)
- ;; YES_ALL-NEXT:     )
- ;; YES_ALL-NEXT:     (drop
- ;; YES_ALL-NEXT:      (i32.const 0)
- ;; YES_ALL-NEXT:     )
- ;; YES_ALL-NEXT:     (drop
- ;; YES_ALL-NEXT:      (i32.const 0)
- ;; YES_ALL-NEXT:     )
- ;; YES_ALL-NEXT:     (drop
- ;; YES_ALL-NEXT:      (i32.const 0)
- ;; YES_ALL-NEXT:     )
+ ;; YES_ALL-NEXT:    (drop
+ ;; YES_ALL-NEXT:     (i32.const 0)
+ ;; YES_ALL-NEXT:    )
+ ;; YES_ALL-NEXT:    (drop
+ ;; YES_ALL-NEXT:     (i32.const 0)
+ ;; YES_ALL-NEXT:    )
+ ;; YES_ALL-NEXT:    (drop
+ ;; YES_ALL-NEXT:     (i32.const 0)
+ ;; YES_ALL-NEXT:    )
+ ;; YES_ALL-NEXT:    (drop
+ ;; YES_ALL-NEXT:     (i32.const 0)
+ ;; YES_ALL-NEXT:    )
+ ;; YES_ALL-NEXT:    (drop
+ ;; YES_ALL-NEXT:     (i32.const 0)
+ ;; YES_ALL-NEXT:    )
+ ;; YES_ALL-NEXT:    (drop
+ ;; YES_ALL-NEXT:     (i32.const 0)
  ;; YES_ALL-NEXT:    )
  ;; YES_ALL-NEXT:   )
  ;; YES_ALL-NEXT:  )
- ;; YES_ALL-NEXT:  (block
- ;; YES_ALL-NEXT:   (block $__inlined_func$maybe-partial-or-full-2$3
- ;; YES_ALL-NEXT:    (local.set $3
- ;; YES_ALL-NEXT:     (i32.const 1)
- ;; YES_ALL-NEXT:    )
- ;; YES_ALL-NEXT:    (block
- ;; YES_ALL-NEXT:     (if
- ;; YES_ALL-NEXT:      (local.get $3)
- ;; YES_ALL-NEXT:      (then
- ;; YES_ALL-NEXT:       (br $__inlined_func$maybe-partial-or-full-2$3)
- ;; YES_ALL-NEXT:      )
- ;; YES_ALL-NEXT:     )
- ;; YES_ALL-NEXT:     (nop)
- ;; YES_ALL-NEXT:     (drop
- ;; YES_ALL-NEXT:      (i32.const 0)
- ;; YES_ALL-NEXT:     )
- ;; YES_ALL-NEXT:     (drop
- ;; YES_ALL-NEXT:      (i32.const 0)
- ;; YES_ALL-NEXT:     )
- ;; YES_ALL-NEXT:     (drop
- ;; YES_ALL-NEXT:      (i32.const 0)
- ;; YES_ALL-NEXT:     )
- ;; YES_ALL-NEXT:     (drop
- ;; YES_ALL-NEXT:      (i32.const 0)
- ;; YES_ALL-NEXT:     )
- ;; YES_ALL-NEXT:     (drop
- ;; YES_ALL-NEXT:      (i32.const 0)
- ;; YES_ALL-NEXT:     )
- ;; YES_ALL-NEXT:     (drop
- ;; YES_ALL-NEXT:      (i32.const 0)
- ;; YES_ALL-NEXT:     )
- ;; YES_ALL-NEXT:     (drop
- ;; YES_ALL-NEXT:      (i32.const 0)
- ;; YES_ALL-NEXT:     )
- ;; YES_ALL-NEXT:     (drop
- ;; YES_ALL-NEXT:      (i32.const 0)
+ ;; YES_ALL-NEXT:  (block $__inlined_func$maybe-partial-or-full-2$3
+ ;; YES_ALL-NEXT:   (local.set $3
+ ;; YES_ALL-NEXT:    (i32.const 1)
+ ;; YES_ALL-NEXT:   )
+ ;; YES_ALL-NEXT:   (block
+ ;; YES_ALL-NEXT:    (if
+ ;; YES_ALL-NEXT:     (local.get $3)
+ ;; YES_ALL-NEXT:     (then
+ ;; YES_ALL-NEXT:      (br $__inlined_func$maybe-partial-or-full-2$3)
  ;; YES_ALL-NEXT:     )
  ;; YES_ALL-NEXT:    )
+ ;; YES_ALL-NEXT:    (nop)
+ ;; YES_ALL-NEXT:    (drop
+ ;; YES_ALL-NEXT:     (i32.const 0)
+ ;; YES_ALL-NEXT:    )
+ ;; YES_ALL-NEXT:    (drop
+ ;; YES_ALL-NEXT:     (i32.const 0)
+ ;; YES_ALL-NEXT:    )
+ ;; YES_ALL-NEXT:    (drop
+ ;; YES_ALL-NEXT:     (i32.const 0)
+ ;; YES_ALL-NEXT:    )
+ ;; YES_ALL-NEXT:    (drop
+ ;; YES_ALL-NEXT:     (i32.const 0)
+ ;; YES_ALL-NEXT:    )
+ ;; YES_ALL-NEXT:    (drop
+ ;; YES_ALL-NEXT:     (i32.const 0)
+ ;; YES_ALL-NEXT:    )
+ ;; YES_ALL-NEXT:    (drop
+ ;; YES_ALL-NEXT:     (i32.const 0)
+ ;; YES_ALL-NEXT:    )
+ ;; YES_ALL-NEXT:    (drop
+ ;; YES_ALL-NEXT:     (i32.const 0)
+ ;; YES_ALL-NEXT:    )
+ ;; YES_ALL-NEXT:    (drop
+ ;; YES_ALL-NEXT:     (i32.const 0)
+ ;; YES_ALL-NEXT:    )
+ ;; YES_ALL-NEXT:   )
+ ;; YES_ALL-NEXT:  )
+ ;; YES_ALL-NEXT:  (block $__inlined_func$very-long-name-we-should-not-error-on-even-though-it-is-very-very-long$4
+ ;; YES_ALL-NEXT:   (block
+ ;; YES_ALL-NEXT:   )
+ ;; YES_ALL-NEXT:  )
+ ;; YES_ALL-NEXT:  (block $__inlined_func$very-long-name-we-should-not-error-on-maybe-even-though-it-is-very-very-long$5
+ ;; YES_ALL-NEXT:   (block
+ ;; YES_ALL-NEXT:   )
+ ;; YES_ALL-NEXT:  )
+ ;; YES_ALL-NEXT:  (block $__inlined_func$very-long-name-we-may-should-not-error-on-maybe-even-though-it-is-very-very-long$6
+ ;; YES_ALL-NEXT:   (block
+ ;; YES_ALL-NEXT:   )
+ ;; YES_ALL-NEXT:  )
+ ;; YES_ALL-NEXT:  (block $__inlined_func$maybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmayb$7
+ ;; YES_ALL-NEXT:   (block
+ ;; YES_ALL-NEXT:   )
+ ;; YES_ALL-NEXT:  )
+ ;; YES_ALL-NEXT:  (block $__inlined_func$maybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybe$8
+ ;; YES_ALL-NEXT:   (block
+ ;; YES_ALL-NEXT:   )
+ ;; YES_ALL-NEXT:  )
+ ;; YES_ALL-NEXT:  (block $__inlined_func$mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm$9
+ ;; YES_ALL-NEXT:   (block
  ;; YES_ALL-NEXT:   )
  ;; YES_ALL-NEXT:  )
  ;; YES_ALL-NEXT: )
@@ -811,74 +816,105 @@
  ;; NO_PART-NEXT:  (call $maybe-partial-or-full-2
  ;; NO_PART-NEXT:   (i32.const 1)
  ;; NO_PART-NEXT:  )
+ ;; NO_PART-NEXT:  (block $__inlined_func$very-long-name-we-should-not-error-on-even-though-it-is-very-very-long
+ ;; NO_PART-NEXT:   (block
+ ;; NO_PART-NEXT:   )
+ ;; NO_PART-NEXT:  )
+ ;; NO_PART-NEXT:  (block $__inlined_func$very-long-name-we-should-not-error-on-maybe-even-though-it-is-very-very-long$1
+ ;; NO_PART-NEXT:   (block
+ ;; NO_PART-NEXT:   )
+ ;; NO_PART-NEXT:  )
+ ;; NO_PART-NEXT:  (block $__inlined_func$very-long-name-we-may-should-not-error-on-maybe-even-though-it-is-very-very-long$2
+ ;; NO_PART-NEXT:   (block
+ ;; NO_PART-NEXT:   )
+ ;; NO_PART-NEXT:  )
+ ;; NO_PART-NEXT:  (block $__inlined_func$maybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmayb$3
+ ;; NO_PART-NEXT:   (block
+ ;; NO_PART-NEXT:   )
+ ;; NO_PART-NEXT:  )
+ ;; NO_PART-NEXT:  (block $__inlined_func$maybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybe$4
+ ;; NO_PART-NEXT:   (block
+ ;; NO_PART-NEXT:   )
+ ;; NO_PART-NEXT:  )
+ ;; NO_PART-NEXT:  (block $__inlined_func$mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm$5
+ ;; NO_PART-NEXT:   (block
+ ;; NO_PART-NEXT:   )
+ ;; NO_PART-NEXT:  )
  ;; NO_PART-NEXT: )
  ;; NO_FULL:      (func $caller
  ;; NO_FULL-NEXT:  (local $0 i32)
  ;; NO_FULL-NEXT:  (local $1 i32)
  ;; NO_FULL-NEXT:  (local $2 i32)
  ;; NO_FULL-NEXT:  (local $3 i32)
- ;; NO_FULL-NEXT:  (block
- ;; NO_FULL-NEXT:   (block $__inlined_func$byn-split-inlineable-B$maybe-partial-or-full-1
- ;; NO_FULL-NEXT:    (local.set $0
- ;; NO_FULL-NEXT:     (i32.const 0)
- ;; NO_FULL-NEXT:    )
- ;; NO_FULL-NEXT:    (if
- ;; NO_FULL-NEXT:     (local.get $0)
- ;; NO_FULL-NEXT:     (then
- ;; NO_FULL-NEXT:      (call $byn-split-outlined-B$maybe-partial-or-full-1
- ;; NO_FULL-NEXT:       (local.get $0)
- ;; NO_FULL-NEXT:      )
+ ;; NO_FULL-NEXT:  (block $__inlined_func$byn-split-inlineable-B$maybe-partial-or-full-1
+ ;; NO_FULL-NEXT:   (local.set $0
+ ;; NO_FULL-NEXT:    (i32.const 0)
+ ;; NO_FULL-NEXT:   )
+ ;; NO_FULL-NEXT:   (if
+ ;; NO_FULL-NEXT:    (local.get $0)
+ ;; NO_FULL-NEXT:    (then
+ ;; NO_FULL-NEXT:     (call $byn-split-outlined-B$maybe-partial-or-full-1
+ ;; NO_FULL-NEXT:      (local.get $0)
  ;; NO_FULL-NEXT:     )
  ;; NO_FULL-NEXT:    )
  ;; NO_FULL-NEXT:   )
  ;; NO_FULL-NEXT:  )
- ;; NO_FULL-NEXT:  (block
- ;; NO_FULL-NEXT:   (block $__inlined_func$byn-split-inlineable-B$maybe-partial-or-full-1$1
- ;; NO_FULL-NEXT:    (local.set $1
- ;; NO_FULL-NEXT:     (i32.const 1)
- ;; NO_FULL-NEXT:    )
- ;; NO_FULL-NEXT:    (if
- ;; NO_FULL-NEXT:     (local.get $1)
- ;; NO_FULL-NEXT:     (then
- ;; NO_FULL-NEXT:      (call $byn-split-outlined-B$maybe-partial-or-full-1
- ;; NO_FULL-NEXT:       (local.get $1)
- ;; NO_FULL-NEXT:      )
+ ;; NO_FULL-NEXT:  (block $__inlined_func$byn-split-inlineable-B$maybe-partial-or-full-1$1
+ ;; NO_FULL-NEXT:   (local.set $1
+ ;; NO_FULL-NEXT:    (i32.const 1)
+ ;; NO_FULL-NEXT:   )
+ ;; NO_FULL-NEXT:   (if
+ ;; NO_FULL-NEXT:    (local.get $1)
+ ;; NO_FULL-NEXT:    (then
+ ;; NO_FULL-NEXT:     (call $byn-split-outlined-B$maybe-partial-or-full-1
+ ;; NO_FULL-NEXT:      (local.get $1)
  ;; NO_FULL-NEXT:     )
  ;; NO_FULL-NEXT:    )
  ;; NO_FULL-NEXT:   )
  ;; NO_FULL-NEXT:  )
- ;; NO_FULL-NEXT:  (block
- ;; NO_FULL-NEXT:   (block $__inlined_func$byn-split-inlineable-A$maybe-partial-or-full-2$2
- ;; NO_FULL-NEXT:    (local.set $2
- ;; NO_FULL-NEXT:     (i32.const 0)
+ ;; NO_FULL-NEXT:  (block $__inlined_func$byn-split-inlineable-A$maybe-partial-or-full-2$2
+ ;; NO_FULL-NEXT:   (local.set $2
+ ;; NO_FULL-NEXT:    (i32.const 0)
+ ;; NO_FULL-NEXT:   )
+ ;; NO_FULL-NEXT:   (if
+ ;; NO_FULL-NEXT:    (i32.eqz
+ ;; NO_FULL-NEXT:     (local.get $2)
  ;; NO_FULL-NEXT:    )
- ;; NO_FULL-NEXT:    (if
- ;; NO_FULL-NEXT:     (i32.eqz
+ ;; NO_FULL-NEXT:    (then
+ ;; NO_FULL-NEXT:     (call $byn-split-outlined-A$maybe-partial-or-full-2
  ;; NO_FULL-NEXT:      (local.get $2)
  ;; NO_FULL-NEXT:     )
- ;; NO_FULL-NEXT:     (then
- ;; NO_FULL-NEXT:      (call $byn-split-outlined-A$maybe-partial-or-full-2
- ;; NO_FULL-NEXT:       (local.get $2)
- ;; NO_FULL-NEXT:      )
+ ;; NO_FULL-NEXT:    )
+ ;; NO_FULL-NEXT:   )
+ ;; NO_FULL-NEXT:  )
+ ;; NO_FULL-NEXT:  (block $__inlined_func$byn-split-inlineable-A$maybe-partial-or-full-2$3
+ ;; NO_FULL-NEXT:   (local.set $3
+ ;; NO_FULL-NEXT:    (i32.const 1)
+ ;; NO_FULL-NEXT:   )
+ ;; NO_FULL-NEXT:   (if
+ ;; NO_FULL-NEXT:    (i32.eqz
+ ;; NO_FULL-NEXT:     (local.get $3)
+ ;; NO_FULL-NEXT:    )
+ ;; NO_FULL-NEXT:    (then
+ ;; NO_FULL-NEXT:     (call $byn-split-outlined-A$maybe-partial-or-full-2
+ ;; NO_FULL-NEXT:      (local.get $3)
  ;; NO_FULL-NEXT:     )
  ;; NO_FULL-NEXT:    )
  ;; NO_FULL-NEXT:   )
  ;; NO_FULL-NEXT:  )
- ;; NO_FULL-NEXT:  (block
- ;; NO_FULL-NEXT:   (block $__inlined_func$byn-split-inlineable-A$maybe-partial-or-full-2$3
- ;; NO_FULL-NEXT:    (local.set $3
- ;; NO_FULL-NEXT:     (i32.const 1)
- ;; NO_FULL-NEXT:    )
- ;; NO_FULL-NEXT:    (if
- ;; NO_FULL-NEXT:     (i32.eqz
- ;; NO_FULL-NEXT:      (local.get $3)
- ;; NO_FULL-NEXT:     )
- ;; NO_FULL-NEXT:     (then
- ;; NO_FULL-NEXT:      (call $byn-split-outlined-A$maybe-partial-or-full-2
- ;; NO_FULL-NEXT:       (local.get $3)
- ;; NO_FULL-NEXT:      )
- ;; NO_FULL-NEXT:     )
- ;; NO_FULL-NEXT:    )
+ ;; NO_FULL-NEXT:  (block $__inlined_func$very-long-name-we-should-not-error-on-even-though-it-is-very-very-long$4
+ ;; NO_FULL-NEXT:   (block
+ ;; NO_FULL-NEXT:   )
+ ;; NO_FULL-NEXT:  )
+ ;; NO_FULL-NEXT:  (call $very-long-name-we-should-not-error-on-maybe-even-though-it-is-very-very-long)
+ ;; NO_FULL-NEXT:  (call $very-long-name-we-may-should-not-error-on-maybe-even-though-it-is-very-very-long)
+ ;; NO_FULL-NEXT:  (block $__inlined_func$maybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmayb$5
+ ;; NO_FULL-NEXT:   (block
+ ;; NO_FULL-NEXT:   )
+ ;; NO_FULL-NEXT:  )
+ ;; NO_FULL-NEXT:  (call $maybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybe)
+ ;; NO_FULL-NEXT:  (block $__inlined_func$mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm$6
+ ;; NO_FULL-NEXT:   (block
  ;; NO_FULL-NEXT:   )
  ;; NO_FULL-NEXT:  )
  ;; NO_FULL-NEXT: )
@@ -894,6 +930,21 @@
  ;; NO_BOTH-NEXT:  )
  ;; NO_BOTH-NEXT:  (call $maybe-partial-or-full-2
  ;; NO_BOTH-NEXT:   (i32.const 1)
+ ;; NO_BOTH-NEXT:  )
+ ;; NO_BOTH-NEXT:  (block $__inlined_func$very-long-name-we-should-not-error-on-even-though-it-is-very-very-long
+ ;; NO_BOTH-NEXT:   (block
+ ;; NO_BOTH-NEXT:   )
+ ;; NO_BOTH-NEXT:  )
+ ;; NO_BOTH-NEXT:  (call $very-long-name-we-should-not-error-on-maybe-even-though-it-is-very-very-long)
+ ;; NO_BOTH-NEXT:  (call $very-long-name-we-may-should-not-error-on-maybe-even-though-it-is-very-very-long)
+ ;; NO_BOTH-NEXT:  (block $__inlined_func$maybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmayb$1
+ ;; NO_BOTH-NEXT:   (block
+ ;; NO_BOTH-NEXT:   )
+ ;; NO_BOTH-NEXT:  )
+ ;; NO_BOTH-NEXT:  (call $maybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybe)
+ ;; NO_BOTH-NEXT:  (block $__inlined_func$mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm$2
+ ;; NO_BOTH-NEXT:   (block
+ ;; NO_BOTH-NEXT:   )
  ;; NO_BOTH-NEXT:  )
  ;; NO_BOTH-NEXT: )
  (func $caller
@@ -915,6 +966,12 @@
   (call $maybe-partial-or-full-2
    (i32.const 1)
   )
+  (call $very-long-name-we-should-not-error-on-even-though-it-is-very-very-long)
+  (call $very-long-name-we-should-not-error-on-maybe-even-though-it-is-very-very-long)
+  (call $very-long-name-we-may-should-not-error-on-maybe-even-though-it-is-very-very-long)
+  (call $maybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmayb)
+  (call $maybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybmaybe)
+  (call $mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm)
  )
 )
 ;; NO_FULL:      (func $byn-split-outlined-B$maybe-partial-or-full-1 (param $x i32)
