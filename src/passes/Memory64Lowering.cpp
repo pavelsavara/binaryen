@@ -357,14 +357,6 @@ struct Memory64Lowering : public WalkerPass<PostWalker<Memory64Lowering>> {
     }
     module->features.disable(FeatureSet::Memory64);
   }
-
-  void run(Module* module) override {
-    if (!module->features.has(FeatureSet::Memory64)) {
-      return;
-    }
-    super::run(module);
-    module->features.disable(FeatureSet::Memory64);
-  }
 };
 
 Pass* createMemory64LoweringPass() { return new Memory64Lowering(); }
