@@ -63,3 +63,9 @@ CMakeUserPresets.json
 .cache/*
 
 .venv/
+.dotnet/
+
+# .NET build
+.dotnet/
+.packages/
+artifacts/
